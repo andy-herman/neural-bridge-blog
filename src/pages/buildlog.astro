@@ -1,0 +1,21 @@
+---
+import BaseLayout from '../components/BaseLayout.astro';
+// V2 — pull commits + STATUS.md from project repos via build-time fetch.
+// V1 placeholder — render once the GitHub Action populates the synced data.
+---
+<BaseLayout title="Build log · neural-bridge.dev">
+  <header class="mb-10 pt-4">
+    <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-3">// Live feed</p>
+    <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight mb-4" style="font-variation-settings: 'opsz' 96, 'SOFT' 60;">Build log</h1>
+    <p class="font-serif italic text-lg text-cream-800 dark:text-cream-200">
+      Auto-generated chronological feed of work across my projects: commits, milestones, status updates.
+    </p>
+  </header>
+
+  <div class="border border-dashed border-cream-300 dark:border-cream-800 rounded p-10 text-center">
+    <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-2">// Coming in v2</p>
+    <p class="font-serif italic text-cream-800 dark:text-cream-200">
+      The sync job lands once flush.py and compile.py are wired up in Neural Bridge.
+    </p>
+  </div>
+</BaseLayout>

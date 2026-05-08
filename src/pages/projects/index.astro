@@ -1,0 +1,31 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../components/BaseLayout.astro';
+
+const projects = (await getCollection('projects'))
+  .sort((a, b) => b.data.started.valueOf() - a.data.started.valueOf());
+---
+<BaseLayout title="Projects · neural-bridge.dev">
+  <header class="mb-12 pt-4">
+    <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-3">// In flight</p>
+    <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight mb-4" style="font-variation-settings: 'opsz' 96, 'SOFT' 60;">Projects</h1>
+    <p class="font-serif italic text-lg text-cream-800 dark:text-cream-200">
+      Things I'm building in public.
+    </p>
+  </header>
+
+  <ul class="editorial-list">
+    {projects.map((p) => (
+      <li class="py-7">
+        <a href={`/projects/${p.slug}`} class="block group">
+          <div class="flex items-baseline gap-3 font-mono text-[11px] tracking-wider uppercase mb-2 text-cream-800 dark:text-cream-300">
+            <span class={p.data.status === 'active' ? 'text-rust-500' : ''}>{p.data.status}</span>
+            <span class="opacity-60">· since {p.data.started.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+          </div>
+          <h2 class="font-serif text-2xl sm:text-[1.75rem] font-semibold tracking-tight group-hover:text-rust-500 transition-colors leading-tight mb-2" style="font-variation-settings: 'opsz' 60, 'SOFT' 50;">{p.data.title}</h2>
+          <p class="text-cream-800 dark:text-cream-200 leading-relaxed">{p.data.description}</p>
+        </a>
+      </li>
+    ))}
+  </ul>
+</BaseLayout>

@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Editorial-meets-terminal: Fraunces (display) + Albert Sans (body) + JetBrains Mono (code) */
+
+@layer base {
+  html {
+    font-family: 'Albert Sans', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'ss01';
+    background: theme('colors.cream.100');
+    color: theme('colors.cream.900');
+  }
+
+  @media (prefers-color-scheme: dark) {
+    html {
+      background: theme('colors.cream.950');
+      color: theme('colors.cream.100');
+    }
+  }
+
+  body {
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, .display {
+    font-family: 'Fraunces', Charter, Georgia, serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  /* Fraunces optical sizing — bigger size = more "wonky" character */
+  h1 { font-variation-settings: 'opsz' 144, 'SOFT' 60; }
+  h2 { font-variation-settings: 'opsz' 80, 'SOFT' 40; }
+  h3 { font-variation-settings: 'opsz' 36; }
+
+  code, pre, kbd, samp {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    font-feature-settings: 'liga' 0;
+  }
+
+  ::selection {
+    background: theme('colors.rust.500');
+    color: theme('colors.cream.50');
+  }
+
+  html { scroll-behavior: smooth; }
+
+  /* Shiki dark-mode swap */
+  @media (prefers-color-scheme: dark) {
+    .astro-code,
+    .astro-code span {
+      color: var(--shiki-dark) !important;
+      background-color: var(--shiki-dark-bg) !important;
+      font-style: var(--shiki-dark-font-style) !important;
+      font-weight: var(--shiki-dark-font-weight) !important;
+      text-decoration: var(--shiki-dark-text-decoration) !important;
+    }
+  }
+}
+
+@layer components {
+  /* Decorative dingbat divider */
+  .divider-mark {
+    text-align: center;
+    color: theme('colors.rust.500');
+    font-family: 'Fraunces', serif;
+    font-size: 1.5rem;
+    line-height: 1;
+    margin: 3rem 0;
+    user-select: none;
+    letter-spacing: 0.5em;
+  }
+
+  /* Reading progress bar */
+  .reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    background: theme('colors.rust.500');
+    width: 0;
+    z-index: 50;
+    transition: width 60ms linear;
+  }
+
+  /* Drop cap on first paragraph of post body */
+  .post-body > p:first-of-type::first-letter {
+    font-family: 'Fraunces', serif;
+    font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;
+    font-size: 4.25rem;
+    line-height: 0.85;
+    font-weight: 700;
+    float: left;
+    padding-right: 0.5rem;
+    padding-top: 0.35rem;
+    color: theme('colors.rust.500');
+  }
+
+  /* Numbered nav (1/ Home, 2/ Posts...) */
+  .nav-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6875rem;
+    color: theme('colors.rust.500');
+    margin-right: 0.35rem;
+  }
+
+  /* Editorial post-card — no boxes, hairline rules */
+  .editorial-list > * + * {
+    border-top: 1px solid theme('colors.cream.200');
+  }
+  @media (prefers-color-scheme: dark) {
+    .editorial-list > * + * {
+      border-top-color: theme('colors.cream.900');
+    }
+  }
+}

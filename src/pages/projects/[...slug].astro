@@ -1,0 +1,58 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../components/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const projects = await getCollection('projects');
+  return projects.map((p) => ({
+    params: { slug: p.slug },
+    props: { project: p },
+  }));
+}
+
+const { project } = Astro.props;
+const { Content } = await project.render();
+
+const allPosts = (await getCollection('posts', ({ data }) => !data.draft && data.project === project.slug))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+---
+<BaseLayout title={`${project.data.title} · neural-bridge.dev`} description={project.data.description}>
+  <header class="mb-10 pt-2">
+    <div class="flex flex-wrap items-baseline gap-x-4 font-mono text-[11px] tracking-wider uppercase text-cream-800 dark:text-cream-300 mb-4">
+      <span class={project.data.status === 'active' ? 'text-rust-500' : ''}>{project.data.status}</span>
+      <span class="opacity-60">· since {project.data.started.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+    </div>
+    <h1 class="font-serif text-5xl sm:text-6xl font-semibold tracking-tight leading-[0.95] mb-5" style="font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;">
+      {project.data.title}
+    </h1>
+    <p class="font-serif italic text-xl text-cream-800 dark:text-cream-200 leading-snug" style="font-variation-settings: 'opsz' 36;">
+      {project.data.description}
+    </p>
+    <div class="mt-5 flex gap-5 font-mono text-xs uppercase tracking-wider">
+      {project.data.repoUrl && <a href={project.data.repoUrl} class="text-rust-500 underline underline-offset-4">Repo &rarr;</a>}
+      {project.data.siteUrl && <a href={project.data.siteUrl} class="text-rust-500 underline underline-offset-4">Site &rarr;</a>}
+    </div>
+  </header>
+
+  <div class="prose dark:prose-invert max-w-none mb-12">
+    <Content />
+  </div>
+
+  {allPosts.length > 0 && (
+    <section class="border-t border-cream-200 dark:border-cream-900 pt-8">
+      <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-4">// Posts about this project</p>
+      <ul class="editorial-list">
+        {allPosts.map((post) => (
+          <li class="py-5">
+            <a href={`/posts/${post.slug}`} class="block group">
+              <time class="font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">
+                {post.data.pubDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+              </time>
+              <h3 class="font-serif text-lg font-semibold mt-1 group-hover:text-rust-500 transition-colors">{post.data.title}</h3>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+</BaseLayout>

@@ -1,0 +1,57 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../components/BaseLayout.astro';
+import Subscribe from '../../components/Subscribe.astro';
+import ReadingProgress from '../../components/ReadingProgress.astro';
+import { readingTime } from '../../lib/reading-time';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts');
+  return posts.map((post) => ({
+    params: { slug: post.slug },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await post.render();
+const dateStr = post.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+const minutes = readingTime(post.body);
+---
+<BaseLayout title={`${post.data.title} · neural-bridge.dev`} description={post.data.description}>
+  <ReadingProgress />
+
+  <article>
+    <header class="mb-10 pt-2">
+      <div class="flex flex-wrap items-baseline gap-x-4 font-mono text-[11px] tracking-wider uppercase text-cream-800 dark:text-cream-300 mb-5">
+        <time datetime={post.data.pubDate.toISOString()}>{dateStr}</time>
+        {post.data.project && <span class="text-rust-500">/ {post.data.project}</span>}
+        <span class="opacity-60">· {minutes} min read</span>
+      </div>
+      <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.05] mb-5" style="font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;">
+        {post.data.title}
+      </h1>
+      <p class="font-serif italic text-xl text-cream-800 dark:text-cream-200 leading-snug" style="font-variation-settings: 'opsz' 36;">
+        {post.data.description}
+      </p>
+    </header>
+
+    <div class="prose dark:prose-invert max-w-none post-body">
+      <Content />
+    </div>
+
+    {post.data.linkedinUrl && (
+      <p class="mt-12 pt-6 border-t border-cream-200 dark:border-cream-900 font-mono text-xs uppercase tracking-wider text-cream-800 dark:text-cream-300">
+        Also on <a href={post.data.linkedinUrl} class="text-rust-500 underline underline-offset-4">LinkedIn &rarr;</a>
+      </p>
+    )}
+
+    <footer class="mt-12 pt-6 border-t border-cream-200 dark:border-cream-900">
+      <p class="font-serif italic text-cream-800 dark:text-cream-200">
+        Andy Herman writes here about Neural Bridge and other build-in-public projects. <a href="/about" class="text-rust-500 underline underline-offset-4">About &rarr;</a>
+      </p>
+    </footer>
+  </article>
+
+  <Subscribe />
+</BaseLayout>

@@ -1,0 +1,34 @@
+---
+import BaseLayout from '../components/BaseLayout.astro';
+import Divider from '../components/Divider.astro';
+---
+<BaseLayout title="About · neural-bridge.dev">
+  <header class="mb-10 pt-4">
+    <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-3">// About</p>
+    <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight" style="font-variation-settings: 'opsz' 96, 'SOFT' 60;">Andy Herman</h1>
+  </header>
+
+  <div class="prose dark:prose-invert max-w-none">
+    <p>
+      I work in regulatory compliance and cybersecurity, teach at the UW iSchool (INFO 310), and build tools. Mostly for myself, sometimes shared.
+    </p>
+    <p>
+      <strong>neural-bridge.dev</strong> is the public side of that work. Build-in-public posts, decisions made out loud, ugly drafts cleaned up enough to share. Most of it ends up cross-posted to LinkedIn too.
+    </p>
+    <p>
+      The current main project is <a href="/projects/neural-bridge">Neural Bridge</a>, a personal AI substrate. Future projects land here as they begin.
+    </p>
+
+    <h2>Find me</h2>
+    <ul>
+      <li><a href="https://github.com/andy-herman">GitHub</a></li>
+      <li>LinkedIn (TBD link)</li>
+    </ul>
+  </div>
+
+  <Divider />
+
+  <p class="font-serif italic text-center text-cream-800 dark:text-cream-200">
+    "The work of using the system is the work of building it."
+  </p>
+</BaseLayout>

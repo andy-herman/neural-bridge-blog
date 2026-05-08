@@ -1,0 +1,32 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../components/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import { readingTime } from '../../lib/reading-time';
+
+const posts = (await getCollection('posts', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+---
+<BaseLayout title="Posts · neural-bridge.dev">
+  <header class="mb-10 pt-4">
+    <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-3">// All posts</p>
+    <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight" style="font-variation-settings: 'opsz' 96, 'SOFT' 60;">Posts</h1>
+  </header>
+
+  {posts.length === 0 && (
+    <p class="font-serif italic text-cream-800 dark:text-cream-300">No posts yet.</p>
+  )}
+  <div class="editorial-list">
+    {posts.map((post) => (
+      <PostCard
+        href={`/posts/${post.slug}`}
+        title={post.data.title}
+        description={post.data.description}
+        pubDate={post.data.pubDate}
+        project={post.data.project}
+        tags={post.data.tags}
+        readingTime={readingTime(post.body)}
+      />
+    ))}
+  </div>
+</BaseLayout>

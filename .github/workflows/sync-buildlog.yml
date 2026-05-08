@@ -1,0 +1,26 @@
+# V2 — sync the build log from project repos.
+#
+# Pulls latest STATUS.md and recent commit history from neural-bridge
+# (and future projects) and commits the synced data to this repo so
+# /buildlog can render it as a chronological feed.
+
+name: Sync build log
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # daily at 06:00 UTC
+  workflow_dispatch:        # manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO V2: implement the sync.
+      # 1. Fetch STATUS.md from andy-herman/neural-bridge
+      # 2. Fetch the last 50 commits via the GitHub API
+      # 3. Transform into src/content/buildlog/*.json or .mdx
+      # 4. Commit changes back to this repo (uses workflow's GITHUB_TOKEN)
+      - name: Placeholder
+        run: echo "Build log sync — wired in V2"

@@ -1,0 +1,89 @@
+---
+title: "Why I'm building Neural Bridge"
+description: "I've shipped a sequence of personal AI projects: Neural, Synapse, Argus. The thinking compounded; the substrate didn't. Here's the bridge."
+pubDate: 2026-05-08
+project: neural-bridge
+tags: [neural-bridge, build-in-public, ai-agents]
+draft: false
+---
+
+Three personal AI projects taught me how to build the next one. **Neural** was the first attempt at a substrate. **Synapse** refined the architecture. **Argus** turned the lessons into a regulatory-compliance copilot I use at work every day, covering DORA, NIS2, and UK CTP.
+
+Each project built on what the last one taught me. The thinking compounded.
+
+The substrate did not.
+
+Argus doesn't share memory with Synapse. The research workflows I built for Neural don't reach Argus. Each project is a fresh repo, a fresh `.claude/` directory, a fresh start on the plumbing, even when the underlying ideas are unmistakably connected.
+
+If you've spent any time building with Claude Code, ChatGPT custom GPTs, or any agent framework, the pattern is probably familiar. Different problems, separate repos, no shared memory. Or twenty browser tabs. Or both.
+
+That's the actual problem.
+
+## The silo pattern
+
+Every agent project is a silo. The decisions I made in Argus don't reach my next project. The research I did for one agent doesn't inform another. Memory dies at the project boundary. Skills don't carry. I keep starting fresh on the plumbing.
+
+Worse: when I want to add a new capability (call it a research agent, a writing agent, whatever), my instinct is to spin up another repo. The portfolio grows. The compounding does not.
+
+This is not a Claude Code problem. This is the entire personal-AI-tooling landscape. People run Claude in a CLI, ChatGPT in a browser, Cursor in their editor, a Telegram bot they vibe-coded one weekend. None of those things share state. None of them know what the others have already done.
+
+The agents work fine. The substrate is missing.
+
+## What I'm actually building
+
+Neural Bridge is the substrate. The name is intentional: after Neural, Synapse, and Argus, the missing piece was the connective tissue between them.
+
+Concretely: multiple specialized agents living together, sharing a markdown wiki memory, reachable from my phone over a chat transport. All on Claude Code, riding the Max subscription instead of paying API tokens.
+
+Three agents to start: **research**, **teaching-prep** (I teach INFO 310 at the UW iSchool), and **content** (drafts of posts like this one). Each writes to its own subdirectory of a shared wiki. Each *reads* across all the others. The wiki compounds with every session. Hooks capture every conversation. A nightly compile pass promotes the good stuff into concept articles.
+
+This is not a new idea. It's a stack of well-known ideas glued together for a personal multi-domain use case nobody has built yet.
+
+## The lineage
+
+**Andre Karpathy** described the LLM-maintained markdown wiki pattern earlier this year. His version is for external knowledge: web clips, papers, transcripts. The LLM "compiles" raw documents into a wiki you query later. He explicitly said he tried RAG and didn't need it.
+
+**Cole Medin** adapted the same pattern for *internal* data. Instead of clipping articles, capture every Claude Code session. His [claude-memory-compiler](https://github.com/coleam00/claude-memory-compiler) uses hooks to flush transcripts into daily logs and compile them into wiki articles. Same architecture, different input pipe.
+
+**Mark Kashef** built ClaudeClaw, the multi-agent dashboard with Telegram and a 3D activity graph. His thing is photogenic, but most of its value is in the substrate underneath, not the visualization on top.
+
+Neural Bridge is what happens when you take Karpathy's wiki, Cole's hooks, Kashef's transport, and ask a question neither has answered: *what if N specialized agents shared the wiki, instead of one agent owning it?*
+
+That's the contribution. The agents I run for research and the agents I run for teaching prep aren't the same agent. But they should compound.
+
+## The plan
+
+| | What ships | When |
+|---|---|---|
+| **V1** | Repo scaffold, three agent definitions, wiki skeleton, project schema | Done. [github.com/andy-herman/neural-bridge](https://github.com/andy-herman/neural-bridge) |
+| **V2** | `SessionEnd` hook for daily-log capture, `flush.py` summarizer, `compile.py` for nightly concept promotion, supervisor process | Next |
+| **V3** | Voice mode, web dashboard, activity graph | Later |
+
+The system runs 24/7 on a Mac Mini. Telegram for mobile. Markdown wiki for the human-readable knowledge layer. SQLite for the task hive. Nothing exotic. Off-the-shelf parts in a particular configuration.
+
+## Why build in public
+
+Two reasons.
+
+First: the problem is universal, but most write-ups are either *finished-product reveals* (here's my polished thing, here's my paid course) or *premature abstractions* (here's a framework I'm shipping before I've used it). Both miss the part where you actually figure things out. The honest middle is "here's what worked this week, here's what didn't."
+
+Second: I'm doing this anyway. I can write notes that sit in my Obsidian vault, or I can write notes other people can read. The marginal cost of the second is small if the work is happening regardless.
+
+## What this blog is
+
+A build journal. Tight, specific, opinionated. Cross-posted to LinkedIn where it fits. The Content agent in Neural Bridge drafts most of it; I edit and ship.
+
+Topics I'll cover:
+
+- The architecture, layer by layer
+- Decisions that turn out wrong (with what I changed and why)
+- Real costs and quotas (Claude Max plus API overflow numbers)
+- The integration pieces (MCP, hooks, Anthropic Channels)
+- The Karpathy-style wiki layer in actual practice
+- What it's like to use a multi-agent personal substrate for daily work, not just demo it
+
+I'll keep posts short. I'll skip preamble. I'll avoid marketing language. If something doesn't work, I'll say so.
+
+Subscribe below if that sounds useful. Or follow me on LinkedIn, most of these will land there too.
+
+Next up: **The 6 layers, and why your back of house matters more than your dashboard.**

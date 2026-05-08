@@ -1,0 +1,26 @@
+---
+export interface Props {
+  href: string;
+  title: string;
+  description: string;
+  pubDate: Date;
+  project?: string;
+  tags?: string[];
+  readingTime?: number;
+}
+const { href, title, description, pubDate, project, readingTime } = Astro.props;
+const dateStr = pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).toUpperCase();
+---
+<article class="py-7">
+  <a href={href} class="block group">
+    <div class="flex items-baseline gap-3 font-mono text-[11px] tracking-wider text-cream-800 dark:text-cream-300 mb-2.5">
+      <time>{dateStr}</time>
+      {project && <span class="text-rust-500">/ {project.toUpperCase()}</span>}
+      {readingTime && <span class="opacity-60">· {readingTime} MIN</span>}
+    </div>
+    <h2 class="font-serif text-2xl sm:text-[1.75rem] font-semibold tracking-tight group-hover:text-rust-500 transition-colors leading-tight mb-3" style="font-variation-settings: 'opsz' 60, 'SOFT' 50;">
+      {title}
+    </h2>
+    <p class="text-cream-800 dark:text-cream-200 leading-relaxed">{description}</p>
+  </a>
+</article>

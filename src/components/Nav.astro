@@ -1,0 +1,27 @@
+---
+const links = [
+  { href: '/', label: 'Home' },
+  { href: '/posts', label: 'Posts' },
+  { href: '/projects', label: 'Projects' },
+  { href: '/buildlog', label: 'Build log' },
+  { href: '/about', label: 'About' },
+];
+---
+<header class="border-b border-cream-200 dark:border-cream-900">
+  <div class="max-w-2xl mx-auto px-6 py-5 flex items-center justify-between">
+    <a href="/" class="font-serif text-lg font-semibold tracking-tight" style="font-variation-settings: 'opsz' 36, 'SOFT' 30;">
+      neural-<span class="text-rust-500">bridge</span>.dev
+    </a>
+    <nav>
+      <ul class="flex gap-x-5 text-sm">
+        {links.map(({ href, label }, i) => (
+          <li>
+            <a href={href} class="text-cream-800 hover:text-cream-950 dark:text-cream-200 dark:hover:text-cream-50 transition-colors">
+              <span class="nav-num">{String(i + 1).padStart(2, '0')}</span>{label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </div>
+</header>
