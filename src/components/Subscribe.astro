@@ -1,10 +1,11 @@
 ---
 // Buttondown form embed.
-// 1. Sign up at https://buttondown.email/
-// 2. Get your form URL at https://buttondown.email/settings/embeds
-// 3. Set BUTTONDOWN_FORM in .env, or replace the YOUR_USERNAME placeholder.
+// 1. Sign up at https://buttondown.com/
+// 2. Get your username from your dashboard
+// 3. Set BUTTONDOWN_FORM in .env to: https://buttondown.com/api/emails/embed-subscribe/<username>
+//    (NOT the public landing page URL — must include /api/emails/embed-subscribe/)
 const formAction = import.meta.env.BUTTONDOWN_FORM
-  || 'https://buttondown.email/api/emails/embed-subscribe/YOUR_USERNAME';
+  || 'https://buttondown.com/api/emails/embed-subscribe/YOUR_USERNAME';
 ---
 <aside class="my-14 py-8 border-y border-cream-200 dark:border-cream-900">
   <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-3">// Subscribe</p>
@@ -22,6 +23,7 @@ const formAction = import.meta.env.BUTTONDOWN_FORM
       placeholder="you@domain.com"
       class="flex-1 px-3 py-2.5 border border-cream-300 dark:border-cream-800 rounded bg-cream-50 dark:bg-cream-900 text-sm font-mono placeholder:text-cream-300 focus:outline-none focus:border-rust-500 transition-colors"
     />
+    <input type="hidden" name="embed" value="1" />
     <button
       type="submit"
       class="px-5 py-2.5 bg-rust-500 text-cream-50 text-sm font-medium rounded hover:bg-rust-600 transition-colors"
@@ -30,6 +32,6 @@ const formAction = import.meta.env.BUTTONDOWN_FORM
     </button>
   </form>
   <p class="font-mono text-[11px] text-cream-800 dark:text-cream-300 mt-3 opacity-70">
-    Powered by <a href="https://buttondown.email" class="underline hover:text-rust-500">Buttondown</a>
+    Powered by <a href="https://buttondown.com" class="underline hover:text-rust-500">Buttondown</a>
   </p>
 </aside>
