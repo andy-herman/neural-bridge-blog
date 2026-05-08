@@ -31,7 +31,11 @@ const { title, description = 'Build-in-public hub for Neural Bridge and other pr
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
+    <meta property="og:image" content={new URL('/og-image.png', Astro.site).href} />
+    <meta property="og:image:width" content="1024" />
+    <meta property="og:image:height" content="1024" />
     <meta name="twitter:card" content="summary" />
+    <meta name="twitter:image" content={new URL('/og-image.png', Astro.site).href} />
 
     <title>{title}</title>
   </head>
