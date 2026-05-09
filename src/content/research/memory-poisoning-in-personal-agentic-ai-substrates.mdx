@@ -37,7 +37,7 @@ You've heard of prompt injection. The OWASP Top 10 for LLM Applications 2025 put
 
 Memory poisoning is different. It sits in OWASP's [LLM04 (Data and Model Poisoning)](https://genai.owasp.org/llm-top-10/) and [LLM08 (Vector and Embedding Weaknesses)](https://genai.owasp.org/llm-top-10/) bucket. Same family, different lifecycle. The malicious content gets *baked into* the wiki during the compile pass. Every future query reads it and treats it as truth. The attack persists until you find and remove it.
 
-To put it bluntly: prompt injection is a one-night stand. Memory poisoning is a marriage.
+Put another way: prompt injection vanishes when the session ends. Memory poisoning is what your AI wakes up believing.
 
 ## It's not theoretical
 

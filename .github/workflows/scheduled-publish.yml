@@ -1,0 +1,67 @@
+# Scheduled publishing.
+#
+# Once a week (Saturday 21:00 UTC ≈ 1pm PST / 2pm PDT), find one queued
+# article (draft: true) whose pubDate has arrived, flip it to published,
+# push the change, and post the tweet.
+#
+# Queue an article for future publication by setting:
+#   draft: true
+#   pubDate: 2026-05-23   # the Saturday it should publish
+# in its frontmatter and pushing. The cron will pick it up on that
+# Saturday (or any later Saturday if it gets backlogged).
+#
+# If multiple drafts qualify on the same run, the oldest pubDate wins.
+# The remaining drafts wait until the next Saturday.
+#
+# Manual run via the Actions tab is also supported.
+
+name: Scheduled publish
+
+on:
+  schedule:
+    - cron: '0 21 * * 6'  # Saturday 21:00 UTC; ~2pm Pacific (year-round, ±1h DST)
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Twitter SDK
+        run: npm install --no-save twitter-api-v2
+
+      - name: Find and flip a scheduled draft
+        id: publish
+        run: node .github/scripts/scheduled-publish.mjs
+
+      - name: Commit and push the publish flip
+        if: steps.publish.outputs.file != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${{ steps.publish.outputs.file }}"
+          git commit -m "Publish: ${{ steps.publish.outputs.title }}"
+          git push
+
+      - name: Wait for Vercel deploy
+        if: steps.publish.outputs.file != ''
+        run: sleep 60
+
+      - name: Tweet the published article
+        if: steps.publish.outputs.file != ''
+        env:
+          TWITTER_APP_KEY: ${{ secrets.TWITTER_APP_KEY }}
+          TWITTER_APP_SECRET: ${{ secrets.TWITTER_APP_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+        run: node .github/scripts/post-to-twitter.mjs "${{ steps.publish.outputs.file }}"

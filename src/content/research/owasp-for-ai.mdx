@@ -6,7 +6,7 @@ pubDate: "2026-05-08"
 topic: "ai-security"
 tags: ["research", "ai-security", "owasp", "frameworks", "governance"]
 status: "working-paper"
-version: "v0.1"
+version: "v0.2"
 draft: false
 ---
 
@@ -34,59 +34,37 @@ The first list, the [OWASP Top 10 for LLM Applications 2025](https://genai.owasp
 
 ## The 2025 Top 10 for LLM Apps
 
-Briefly, top down:
+Reading the [Top 10](https://genai.owasp.org/llm-top-10/) numerically is the wrong way to absorb it. The list isn't a priority queue, it's a taxonomy, and the items make a lot more sense once you see how they cluster. Walk it as a story instead, following content as it moves from input through processing to output, and the geography of the threat surface becomes obvious.
 
-**LLM01: Prompt Injection.** User input (or content from external sources the LLM reads) hijacks the model's behavior. Indirect prompt injection (where the malicious content arrives via a document or URL the model fetches) is harder to detect than direct injection. This is the biggest single category. We cover it at depth in Memory Poisoning in Personal Agentic AI Substrates.
+The story starts with input. **LLM01: Prompt Injection** is the gateway risk and the reason the rest of the list exists. Someone gets adversarial text in front of the model, either by typing it directly or by hiding it inside a document, web page, or tool response the model decides to read, and the model's behavior pivots to follow the attacker's instructions instead of yours. Indirect injection (the document case) is harder to catch than direct injection, because the model reads adversarial content the same way it reads anything else. This is the most cited category for a reason. I cover it at depth in Memory Poisoning in Personal Agentic AI Substrates.
 
-**LLM02: Sensitive Information Disclosure.** The model leaks data it shouldn't. Training data leaks, system prompt leakage, RAG documents that bleed across users. Promoted from #6 to #2 in 2025 due to real-world incidents.
+Once injection is on the table, the next question is what the attacker can corrupt that survives a single session. That's the **LLM04: Data and Model Poisoning** and **LLM08: Vector and Embedding Weaknesses** cluster. LLM04 is poisoning at the source (training data, fine-tuning sets, and increasingly the wikis and knowledge bases agents compile from raw input). LLM08 is the RAG-specific variant: poisoning the vector index, exploiting embedding similarity to exfiltrate context, or pulling in malicious documents through retrieval. The papers [AgentPoison (NeurIPS 2024)](https://arxiv.org/abs/2407.12784) and [PoisonedRAG (USENIX Security 2025)](https://www.usenix.org/system/files/usenixsecurity25-zou-poisonedrag.pdf) showed that the data needed to flip an agent's behavior is shockingly small, often single-digit documents in corpora of millions.
 
-**LLM03: Supply Chain.** The model itself, the embeddings, the third-party tools it calls. All dependencies are attack surface. Promoted to #3.
+From there the story shifts to what the model gives away. **LLM02: Sensitive Information Disclosure** got promoted from #6 to #2 in the 2025 update because real incidents kept finding their way into the news, training data leaks, system prompts read back verbatim, RAG contexts bleeding across tenants. Its specialist sibling, **LLM07: System Prompt Leakage**, is its own category because system prompts have become a product moat: knowing the prompt makes it dramatically easier to plan future attacks or replicate the application's behavior elsewhere.
 
-**LLM04: Data and Model Poisoning.** Adversarial data in training, fine-tuning, or knowledge-base corpora. AgentPoison and PoisonedRAG (covered in the memory-poisoning paper) are the academic benchmarks.
+What about the model's output? Two different worries here. **LLM05: Improper Output Handling** is the trust failure: piping model output straight into a SQL query, a shell command, or a downstream API without treating it as untrusted. **LLM09: Misinformation** is the truth failure: the model says something confidently wrong, and humans or systems downstream treat the assertion as fact. (LLM09 replaced the older "Overreliance" entry in 2025, which felt a bit too hand-wavy to be actionable.) The two together make the case that LLM output has the same security posture as any other untrusted input.
 
-**LLM05: Improper Output Handling.** Treating LLM output as trusted when it shouldn't be. Classic example: passing model output directly into SQL or shell.
+Then there's the pair that determines blast radius. **LLM06: Excessive Agency** is what turns a small compromise into a big one. Give an agent broad tool access, broad permissions, or broad autonomy, and a successful injection at LLM01 doesn't just produce a bad answer, it sends an email, deletes a file, or moves money. **LLM10: Unbounded Consumption** is the same pattern aimed at your wallet: prompt-driven cost attacks, runaway token use, infinite tool loops, denial-of-service via your own quota. Together they ask the same question from different angles: *what can the adversary make this thing do once it's been compromised?*
 
-**LLM06: Excessive Agency.** Giving an agent more authority than it needs (tool access, permissions, autonomy) so a successful prompt injection has a bigger blast radius.
+Finally, the question of where it all came from. **LLM03: Supply Chain** got promoted to #3 because it's where many of the other risks originate. The base model, the embeddings, the third-party plugins, the open-source tools the agent calls — every dependency is attack surface, and "we trusted the upstream" is a common root cause when an LLM02 or LLM04 issue hits production.
 
-**LLM07: System Prompt Leakage.** Adversaries extract your system prompt and use it to plan attacks or replicate your product.
-
-**LLM08: Vector and Embedding Weaknesses.** RAG-specific. Embedding inversion, similarity-based exfiltration, retrieval poisoning.
-
-**LLM09: Misinformation.** The model confidently states things that are wrong and downstream systems treat as true. Replaced "Overreliance" in 2025.
-
-**LLM10: Unbounded Consumption.** DoS by burning your tokens, quota, or compute. Includes prompt-driven cost attacks.
-
-If you internalize nothing else, this list will get you 80% of the way to thinking sensibly about AI security risk.
+That's the whole list, and the clustering is the actual mental model: input attack (01) → source pollution (04, 08) → disclosure (02, 07) → output trust (05, 09) → amplifier (06, 10) → pedigree (03). If you internalize nothing else, that walk will get you 80% of the way to thinking sensibly about LLM security.
 
 ## The 2026 Top 10 for Agentic Applications
 
-In December 2024, OWASP launched the [Agentic AI Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/) to specifically address autonomous AI systems and multi-step agent workflows. The result, the [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/), is a separate list.
+In December 2024, OWASP launched the [Agentic AI Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/) to address what was clearly a different shape of problem: autonomous AI systems running multi-step workflows, holding persistent memory, and reaching out to tools on their own. The result, the [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/), is a separate list and not a subset of the LLM list.
 
-The reason it had to be separate: agentic risks aren't a strict subset of LLM-app risks. New attack patterns emerge when an LLM has tools, persistent memory, and multi-step planning. A non-exhaustive sample:
-
-- **Tool misuse and confused-deputy attacks** — agent calls a sensitive tool because of indirect injection
-- **Memory-based attacks** — long-term memory poisoning is in this list
-- **Multi-agent collusion or cross-contamination** — agents that talk to each other amplify single-point compromises
-- **Goal subversion** — an attacker shifts the agent's objective without changing the system prompt
-- **Resource exhaustion at the agent level** — runaway loops, infinite delegation, cost-spiral DoS
+The reason it had to be separate is that agency changes the threat model. Once an LLM has tools, the classic confused-deputy problem reappears in a new form: indirect injection convinces the agent to invoke a sensitive capability the user never asked for, and the agent's own permissions are what cause the damage. Once it has long-term memory, you get persistence: a single bad day's input becomes a permanent belief, which is the entire premise of memory poisoning. Once it can plan multi-step actions, an attacker can subvert its goal without ever touching the system prompt — just nudge intermediate decisions until the agent walks itself somewhere bad. Multi-agent setups make all of this worse, because contamination in one agent leaks through shared memory or message-passing to others. And resource exhaustion stops being a token-count problem and becomes runaway delegation: agents calling agents calling agents, no obvious circuit breaker.
 
 For build-in-public people like me building [Neural Bridge](https://neural-bridge.dev), the agentic list is the more relevant one. Most of my Layer 4 and Layer 5 threats in the Neural Bridge security architecture map directly into it.
 
 ## How to actually use OWASP for AI
 
-Three pragmatic uses, in order of effort:
+There are three increasingly serious ways to use this material, and most teams will end up doing all three.
 
-### 1. As a vocabulary
+The lightest use is just **vocabulary**. Once "LLM05" means "improper output handling" to everyone in the room, conversations get noticeably faster and more honest. Half the value of the Top 10 is replacing fuzzy phrases like "the AI does sketchy things sometimes" with shared shorthand the whole team understands. Don't underestimate that.
 
-The simplest use is just internalizing the list as a mental model. When someone says "we should worry about LLM05," you should know they mean improper output handling, and ask follow-up questions. This is the dev-team-watercooler version. It's surprisingly powerful at making conversations efficient.
-
-### 2. As a self-assessment
-
-Walk through each Top 10 item against your system and answer "are we exposed to this, and if yes, what's our control?" The answers will be uneven. That's fine. The exercise is the value.
-
-For a personal project: maybe 30 minutes. For a small SaaS: a half-day. For an enterprise system: a sprint, and you'll find things.
-
-A useful template:
+The next step up is **self-assessment**. Walk each item against your system and answer two questions: are we exposed, and if so, what stops it? The answers will be uneven — most early-stage systems have strong controls in two or three categories and effectively nothing in the rest. That uneven answer *is* the value of the exercise. A personal project will burn about thirty minutes on this; a small SaaS runs half a day; an enterprise system takes a sprint and turns up things people had been quietly worrying about. A workable template looks like this:
 
 ```
 LLM01 — Prompt Injection
@@ -96,13 +74,9 @@ LLM01 — Prompt Injection
   Residual risk: [what remains; rate L/M/H]
 ```
 
-Run it down the list. Write the answers down. Revisit quarterly.
+Run it down the list, write the answers down, and revisit quarterly. The writing down part matters more than it sounds — it's how you notice that the residual-risk column is identical to last quarter's, and someone needs to actually do the work.
 
-### 3. As a regulatory backstop
-
-This is where OWASP earns its keep in 2026. Multiple regulations now reference recognized AI security frameworks as the basis of "reasonable" risk management. The [Colorado AI Act](https://leg.colorado.gov/bill_files/47770/download) explicitly accepts the [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework), [ISO/IEC 42001](https://www.iso.org/standard/81230.html), or other internationally recognized frameworks as an affirmative defense. OWASP's Top 10 isn't itself a management system, but it's the kind of framework auditors and regulators recognize when you point at it. (Companion piece: AI Security Regulation in 2026.)
-
-If you're a security team responding to "demonstrate your AI risk program," you almost certainly want OWASP cited somewhere in the answer.
+The heaviest use is **regulatory backstop**, and this is where OWASP earns its keep in 2026. A growing number of laws now reference "recognized" AI risk frameworks as the basis of reasonable care. The [Colorado AI Act](https://leg.colorado.gov/bill_files/47770/download) explicitly accepts the [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework), [ISO/IEC 42001](https://www.iso.org/standard/81230.html), or other internationally recognized frameworks as an affirmative defense, and OWASP fits the shape of "framework an auditor will recognize" even though it isn't a management system in the ISO sense. If you're a security team responding to "demonstrate your AI risk program," you almost certainly want OWASP cited somewhere in the answer. The companion piece, AI Security Regulation in 2026, walks the regulatory side in detail.
 
 ## What OWASP for AI doesn't cover well
 
