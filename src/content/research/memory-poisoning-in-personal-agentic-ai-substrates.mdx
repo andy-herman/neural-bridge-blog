@@ -21,9 +21,7 @@ That's memory poisoning. It's the security problem almost nobody is solving for 
 
 ## The pattern: AI as your second brain
 
-Andrej Karpathy described the architecture in early 2026: instead of using vector-database RAG to give an AI long-term memory, just have it maintain a markdown wiki. Web clips, papers, transcripts go into a `raw/` folder. The AI compiles them into concept articles. The wiki grows. The AI reads it on every query. Karpathy:
-
-> "a large fraction of my recent token throughput is going less into manipulating code, and more into manipulating knowledge (stored as markdown and images)"
+Andrej Karpathy described the architecture in early 2026: instead of using vector-database RAG to give an AI long-term memory, just have it maintain a markdown wiki. Web clips, papers, transcripts go into a `raw/` folder. The AI compiles them into concept articles. The wiki grows. The AI reads it on every query. Karpathy framed it as a deliberate shift in how he was using LLMs: less time manipulating code, more time manipulating *knowledge* — kept as markdown files and images rather than as embeddings in a vector database.
 
 Cole Medin took the pattern further with [claude-memory-compiler](https://github.com/coleam00/claude-memory-compiler), capturing every Claude Code session as raw input that compiles overnight into the wiki. I'm building [Neural Bridge](https://neural-bridge.dev) on the same pattern at multi-agent scale.
 
@@ -49,8 +47,8 @@ This is where the academic literature has caught up.
 
 Real-world incidents follow the same script:
 
-- **[GrafanaGhost](https://www.lakera.ai/blog/indirect-prompt-injection)**: Researchers embedded instructions in URL parameters that ended up in Grafana's logs. Grafana's AI assistant later read those logs while doing routine analysis, followed the instructions, and exfiltrated financial metrics, infrastructure telemetry, and customer records to an attacker-controlled server.
-- **[ForcedLeak](https://unit42.paloaltonetworks.com/ai-agent-prompt-injection/)** (Salesforce Agentforce), **GeminiJack** (Google Gemini), **DockerDash**: each one is a variation of the same theme. AI feature gets added to an existing platform. Untrusted content reaches the model. Model takes action on adversary instructions. Security tools see nothing because the AI is acting through its own legitimate channels.
+- **[GrafanaGhost](https://noma.security/blog/grafana-ghost/)**: Noma Security researchers embedded instructions in URL parameters that ended up in Grafana's logs. Grafana's AI assistant later read those logs while doing routine analysis, followed the instructions, and exfiltrated financial metrics, infrastructure telemetry, and customer records to an attacker-controlled server. Grafana Labs patched it in April 2026.
+- **[ForcedLeak](https://noma.security/blog/forcedleak-agent-risks-exposed-in-salesforce-agentforce/)** (Salesforce Agentforce, CVSS 9.4), **GeminiJack** (Google Gemini), **DockerDash** (Docker's "Ask Gordon" AI): each one is a variation of the same theme. AI feature gets added to an existing platform. Untrusted content reaches the model. Model takes action on adversary instructions. Security tools see nothing because the AI is acting through its own legitimate channels.
 - In August 2025, security researcher [Johann Rehberger published "The Month of AI Bugs"](https://www.techrepublic.com/article/news-ai-agents-prompt-injection-data-security/), one critical AI vulnerability disclosure per day across major AI platforms. The headline takeaway: virtually every AI system in production today is vulnerable to some form of prompt injection.
 
 These attacks all share the property that makes memory poisoning especially nasty at personal scale: the malicious instruction does not *look* malicious. It is hidden inside content that has every reason to be in the system.
