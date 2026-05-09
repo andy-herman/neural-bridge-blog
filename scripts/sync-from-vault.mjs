@@ -176,6 +176,7 @@ async function main() {
     tags: fm.tags || [],
     status: fm.status || 'working-paper',
     version: fm.version || undefined,
+    linkedinUrl: fm.linkedinUrl || undefined,
     draft: false,
   };
 
