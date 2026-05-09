@@ -177,7 +177,9 @@ async function main() {
     status: fm.status || 'working-paper',
     version: fm.version || undefined,
     linkedinUrl: fm.linkedinUrl || undefined,
-    draft: false,
+    // Default to draft. Only publish when the vault file explicitly sets
+    // `draft: false` in frontmatter — keeps publishing an intentional act.
+    draft: fm.draft === 'false' ? false : true,
   };
 
   const output = stringifyFrontmatter(blogFm) + '\n\n' + body.trim() + '\n';
