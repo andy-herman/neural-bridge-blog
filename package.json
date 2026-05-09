@@ -8,7 +8,8 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "sync-paper": "node scripts/sync-from-vault.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.0.0",
