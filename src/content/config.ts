@@ -26,4 +26,26 @@ const projects = defineCollection({
   }),
 });
 
-export const collections = { posts, projects };
+const research = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string(),
+    description: z.string(),
+    abstract: z.string().optional(),
+    pubDate: z.coerce.date(),
+    updatedDate: z.coerce.date().optional(),
+    topic: z.enum([
+      'ai-security',
+      'agentic-ai-security',
+      'development-playbooks',
+      'compliance-risk',
+    ]),
+    tags: z.array(z.string()).default([]),
+    status: z.enum(['working-paper', 'draft', 'published']).default('working-paper'),
+    version: z.string().optional(),
+    linkedinUrl: z.string().url().optional(),
+    draft: z.boolean().default(false),
+  }),
+});
+
+export const collections = { posts, projects, research };

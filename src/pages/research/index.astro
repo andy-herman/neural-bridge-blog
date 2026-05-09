@@ -1,0 +1,58 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../components/BaseLayout.astro';
+import ResearchCard from '../../components/ResearchCard.astro';
+
+const TOPIC_ORDER = [
+  'agentic-ai-security',
+  'ai-security',
+  'development-playbooks',
+  'compliance-risk',
+] as const;
+
+const TOPIC_LABELS: Record<string, string> = {
+  'ai-security': 'AI Security',
+  'agentic-ai-security': 'Agentic AI Security',
+  'development-playbooks': 'Development Playbooks',
+  'compliance-risk': 'Compliance & Risk',
+};
+
+const papers = (await getCollection('research', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const byTopic = TOPIC_ORDER
+  .map(topic => ({ topic, papers: papers.filter(p => p.data.topic === topic) }))
+  .filter(g => g.papers.length > 0);
+---
+<BaseLayout title="Research · neural-bridge.dev">
+  <header class="mb-12 pt-4">
+    <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-3">// Research</p>
+    <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight mb-4" style="font-variation-settings: 'opsz' 96, 'SOFT' 60;">Research</h1>
+    <p class="font-serif italic text-lg text-cream-800 dark:text-cream-200 max-w-xl">
+      Working papers and notes on AI security, agentic AI security, development playbooks, and compliance and risk topics worth thinking through carefully.
+    </p>
+  </header>
+
+  {papers.length === 0 && (
+    <p class="font-serif italic text-cream-800 dark:text-cream-300">No research yet.</p>
+  )}
+
+  {byTopic.map(({ topic, papers: topicPapers }) => (
+    <section class="mb-10">
+      <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-2 border-t border-cream-200 dark:border-cream-900 pt-6">{TOPIC_LABELS[topic] || topic}</p>
+      <div class="editorial-list">
+        {topicPapers.map(paper => (
+          <ResearchCard
+            href={`/research/${paper.slug}`}
+            title={paper.data.title}
+            description={paper.data.description}
+            pubDate={paper.data.pubDate}
+            topic={paper.data.topic}
+            status={paper.data.status}
+            version={paper.data.version}
+          />
+        ))}
+      </div>
+    </section>
+  ))}
+</BaseLayout>

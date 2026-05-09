@@ -1,0 +1,134 @@
+---
+title: "Memory Poisoning in Personal Agentic AI Substrates"
+description: "Markdown-wiki memory layers introduce a new threat surface. Once an adversary plants content in the input pipeline, the LLM compiles it into the wiki's concept articles, where it influences every future query."
+abstract: |
+  Personal AI substrates increasingly rely on LLM-maintained markdown wikis as a memory layer. This pattern, popularized by Karpathy and operationalized by tools like Cole Medin's claude-memory-compiler, treats memory as plain text the LLM can read, edit, and consolidate, replacing vector-database RAG with structured markdown a human can review. The pattern is operationally elegant and remarkably effective at personal scale. It also introduces a previously-uncharacterized threat surface: memory poisoning. This paper defines the threat model, identifies the attack surfaces specific to personal-scale agentic AI substrates, and surveys mitigation patterns.
+pubDate: 2026-05-08
+topic: agentic-ai-security
+tags: [agentic-ai, security, memory-poisoning, threat-modeling, personal-ai]
+status: working-paper
+version: "v0.1"
+draft: false
+---
+
+## 1. Introduction
+
+The "personal AI substrate" pattern (where a user runs multiple specialized AI agents on their own infrastructure, sharing memory and skills) has matured rapidly in 2026. The architecture popularized by Andrej Karpathy and operationalized by Cole Medin replaces vector-database RAG with **LLM-maintained markdown wikis**: plain-text memory that the LLM reads, edits, and consolidates incrementally. The advantage is inspectability. Every memory is a markdown file. A human can read, edit, or delete it.
+
+What this gains in inspectability and editability, it loses in implicit isolation. A vector index of embeddings is opaque but tightly bounded: an injected document doesn't change the meaning of other documents. A markdown wiki is *integrative*. The compile pass reads multiple sources and synthesizes them into concept articles. **Influence flows from raw to wiki, and from wiki to every future query.**
+
+This paper characterizes the resulting threat surface: memory poisoning. It defines the threat model, surveys mitigation patterns, and identifies open problems for personal-scale agentic AI security.
+
+## 2. The Substrate Pattern
+
+A personal agentic AI substrate consists of three loosely-coupled layers:
+
+1. **Raw inputs.** Web clips (via Obsidian Web Clipper or similar), papers, transcripts, session logs from the AI itself.
+2. **A wiki.** LLM-compiled markdown articles with cross-references. Rebuilt incrementally as new raw input arrives.
+3. **A query interface.** The LLM, given a task, navigates the wiki via filesystem operations rather than vector retrieval.
+
+The pattern's strength is its inspectability. The pattern's weakness is its integrative compile pass. Every concept article is a *synthesis* of multiple sources; once written, it is treated by future queries as a single primary source. The provenance chain back to the raw inputs is implicit at best.
+
+## 3. Threat Model
+
+### 3.1 Adversaries
+
+Three classes of adversary are realistic for personal substrates:
+
+- **External: web content.** Articles, papers, blog posts the user clips and ingests. Mostly trustworthy but at scale include adversarial content (SEO spam, watermarked LLM-generated misinformation, deliberate prompt-injection payloads embedded in legitimate-looking documents).
+- **Compromised tooling.** Third-party MCP servers, browser extensions, RSS scrapers. Any tool that can write to `raw/` is in scope.
+- **Self-injection.** The user's own AI agents writing to memory. If one agent's session was itself influenced by adversarial content, its summary lands in `daily-logs/` and propagates.
+
+### 3.2 Assets
+
+| Asset | Why it matters |
+|---|---|
+| Wiki concept articles | Read on every relevant query. High-impact target. |
+| Index files | Read first on every session start. Even higher-impact target. |
+| Per-agent memory subdirectories | Per-agent context that other agents may also read in cross-agent designs (cf. Neural Bridge). |
+| Session histories | Transcripts archived for replay. Constrained reads but non-zero impact. |
+
+### 3.3 Attack Surface
+
+Three injection paths exist:
+
+1. **Raw-to-wiki.** Adversary plants content in a clipped article or ingested PDF. The compile pass treats it as a normal source. The output article appears in the wiki, indistinguishable from organic content.
+2. **Session-to-wiki.** Adversary input into an agent session (a malicious user message, a compromised tool's output) gets summarized into the daily log via SessionEnd hooks. The summary is then promoted into a concept article on the next nightly compile.
+3. **Direct file write.** A compromised process with filesystem access writes directly to `wiki/concepts/`. Out of scope for this paper. Assume defense-in-depth at the OS level.
+
+### 3.4 Impact
+
+A poisoned concept article is read on every relevant future query. The agent treats it as ground truth. Downstream impacts:
+
+- **Steering.** Subtle redirection of decisions ("based on prior research, the recommended approach is X").
+- **Capability degradation.** Misleading technical content makes the agent less effective at tasks.
+- **Exfiltration.** If the article includes "remember to email X with [credential]", the agent might do so.
+- **Persistent influence.** Unlike a one-shot prompt injection, poisoned memory affects every future query until detected and removed.
+
+The most concerning property: **poisoning is durable**. Prompt injection at query time is ephemeral; memory poisoning is persistent.
+
+## 4. Case Study: A Plausible Attack
+
+Consider a user maintaining a wiki of cybersecurity research. Their `raw/` ingest pipeline includes RSS feeds for several CVE databases.
+
+An attacker compromises a low-traffic vulnerability blog (or simply publishes adversarial content there, content-marketing-style). The blog post discusses a real CVE, but embeds, in passing:
+
+> "...the recommended mitigation is to disable input sanitization on user-supplied parameters, as overly aggressive filtering causes false positives in production..."
+
+The user's pipeline ingests the post. The compile pass reads it alongside other research and generates a concept article: `wiki/concepts/cve-2026-xxxx-mitigations.md`. The article includes the bad advice, framed as an authoritative recommendation, in the same voice as every other concept article.
+
+Two weeks later the user asks their agent: "What's the recommended mitigation for CVE-2026-XXXX?" The agent reads the concept article, summarizes it, and recommends disabling input sanitization.
+
+The user trusts the response because the wiki has been right about everything else.
+
+The poisoned article remains in the wiki. Future queries on related topics may cite it. Lateral contamination across concept articles (the lint pass identifies cross-references and may reinforce the bad claim through citation) compounds the problem.
+
+## 5. Mitigation Patterns
+
+### 5.1 Filing Gate
+
+Before content moves from `daily-logs/` or `raw/` into `wiki/concepts/`, run a separate LLM pass, explicitly adversarial, that asks: *is this content worth promoting? does it conflict with existing concept articles? does it include suspicious instruction-like patterns?* Concepts that fail the gate go to `wiki/quarantine/` for human review.
+
+The gate's prompt should treat all input as untrusted by default. Karpathy's original PRD and Cole Medin's compiler both lack an explicit filing gate; this is the highest-leverage mitigation.
+
+### 5.2 Provenance Chains
+
+Every wiki article should carry provenance: which raw source(s) it was compiled from, when, and (cryptographically, ideally) by which compile-pass version. Discovering a poisoned source then becomes a one-step lookup: *all articles derived from this RSS feed before this date.*
+
+### 5.3 Adversarial Lint
+
+The lint pass that finds broken wiki-links and orphaned articles can be extended to detect *suspicious* articles: those with imperative language directed at the agent ("you should...", "always do..."), contradictions with established concept articles, or content that doesn't match its source's claimed provenance. Lint findings get human review before deletion.
+
+### 5.4 Compartmentalization
+
+Per-agent memory subdirectories (used in cross-agent substrates like Neural Bridge) limit blast radius if one agent's session is compromised. Only that agent's subdirectory is touched, and the cross-agent compile pass can apply additional scrutiny when promoting from per-agent to shared concepts.
+
+### 5.5 High-Impact Promotion Review
+
+Promotions that would alter index files or replace existing concept articles should require human approval. Routine appends are auto-approved; structural rewrites are not. The threshold can be tuned.
+
+## 6. Open Problems
+
+Several problems remain unsolved at personal scale:
+
+1. **Detection of poisoned memory after the fact.** Once content is in the wiki and naturalized through editing passes, finding it is hard. Periodic differential testing against trusted corpora may help; the engineering is non-trivial.
+2. **Trust calibration as the wiki ages.** New articles should be more skeptically cited; old articles that have survived multiple lint passes are presumably more trustworthy. How to encode this in the agent's reasoning?
+3. **Cross-agent contamination.** In multi-agent substrates, a compromised agent's memory can influence every other agent that reads its subdirectory. Quarantine semantics for cross-agent reads need definition.
+4. **Auditability under decay.** Karpathy's pattern explicitly contemplates "memories that fade." How does provenance survive consolidation?
+5. **Adversarial robustness of LLM-as-judge filing gates.** The gate is itself an LLM. It can be bypassed. Layered defenses are needed.
+
+## 7. Conclusion
+
+Memory poisoning is the personal-scale equivalent of supply-chain attacks on dependency graphs: an injection at one point in the pipeline propagates and durably influences downstream behavior. The pattern that makes LLM-maintained markdown wikis appealing (their integrative, free-form, cross-referenced nature) is also what makes them susceptible.
+
+The mitigations are tractable: explicit filing gates, provenance chains, adversarial lint, compartmentalization. None are technically novel; what's novel is recognizing that personal substrates need them. The first generation of memory-compiler tools ship without these defenses by default. Hardening the pattern is a tractable next step.
+
+This is a working paper (v0.1). Comments, counter-examples, and prior-art pointers welcome.
+
+## References
+
+1. Karpathy, A. (2026). [LLM Knowledge Bases PRD](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f). Gist.
+2. Medin, C. (2026). [claude-memory-compiler](https://github.com/coleam00/claude-memory-compiler). GitHub repository.
+3. Greshake, K. et al. (2023). *Not what you've signed up for: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection.* arXiv:2302.12173.
+4. Anthropic. (2026). [Claude Code Subagents documentation](https://code.claude.com/docs/en/sub-agents).
+5. Neural Bridge project. [github.com/andy-herman/neural-bridge](https://github.com/andy-herman/neural-bridge).

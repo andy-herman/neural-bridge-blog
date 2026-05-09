@@ -1,0 +1,74 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../components/BaseLayout.astro';
+import ReadingProgress from '../../components/ReadingProgress.astro';
+import { readingTime } from '../../lib/reading-time';
+
+export async function getStaticPaths() {
+  const papers = await getCollection('research');
+  return papers.map((paper) => ({
+    params: { slug: paper.slug },
+    props: { paper },
+  }));
+}
+
+const TOPIC_LABELS: Record<string, string> = {
+  'ai-security': 'AI Security',
+  'agentic-ai-security': 'Agentic AI Security',
+  'development-playbooks': 'Development Playbooks',
+  'compliance-risk': 'Compliance & Risk',
+};
+
+const { paper } = Astro.props;
+const { Content } = await paper.render();
+const dateStr = paper.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+const minutes = readingTime(paper.body);
+const topicLabel = TOPIC_LABELS[paper.data.topic] ?? paper.data.topic;
+const statusLabel = paper.data.status === 'working-paper' ? 'Working Paper' : paper.data.status === 'draft' ? 'Draft' : null;
+---
+<BaseLayout title={`${paper.data.title} · neural-bridge.dev`} description={paper.data.description}>
+  <ReadingProgress />
+
+  <article>
+    <header class="mb-10 pt-2">
+      <div class="flex flex-wrap items-baseline gap-x-3 font-mono text-[11px] tracking-wider uppercase text-cream-800 dark:text-cream-300 mb-5">
+        <time datetime={paper.data.pubDate.toISOString()}>{dateStr}</time>
+        <span class="text-rust-500">/ {topicLabel}</span>
+        {statusLabel && <span class="opacity-80">· {statusLabel}</span>}
+        {paper.data.version && <span class="opacity-60">· {paper.data.version}</span>}
+        <span class="opacity-60">· {minutes} min read</span>
+      </div>
+      <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.05] mb-5" style="font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;">
+        {paper.data.title}
+      </h1>
+      <p class="font-mono text-xs text-cream-800 dark:text-cream-300 uppercase tracking-wider">By Andy Herman</p>
+    </header>
+
+    {paper.data.abstract && (
+      <aside class="my-8 p-6 border-l-2 border-rust-500 bg-cream-200/40 dark:bg-cream-900/40 rounded-r">
+        <p class="font-mono text-xs uppercase tracking-wider text-rust-500 mb-3">Abstract</p>
+        <p class="font-serif italic text-cream-900 dark:text-cream-100 leading-relaxed" style="font-variation-settings: 'opsz' 24;">
+          {paper.data.abstract}
+        </p>
+      </aside>
+    )}
+
+    <div class="prose dark:prose-invert max-w-none">
+      <Content />
+    </div>
+
+    {paper.data.linkedinUrl && (
+      <p class="mt-12 pt-6 border-t border-cream-200 dark:border-cream-900 font-mono text-xs uppercase tracking-wider text-cream-800 dark:text-cream-300">
+        Also on <a href={paper.data.linkedinUrl} class="text-rust-500 underline underline-offset-4">LinkedIn &rarr;</a>
+      </p>
+    )}
+
+    <footer class="mt-12 pt-6 border-t border-cream-200 dark:border-cream-900 font-serif italic text-cream-800 dark:text-cream-200">
+      {paper.data.status === 'working-paper' ? (
+        <p>This is a working paper. Comments, counter-examples, and prior-art pointers welcome via <a href="https://github.com/andy-herman/neural-bridge" class="text-rust-500 underline underline-offset-4">GitHub</a> or LinkedIn.</p>
+      ) : (
+        <p>Comments and corrections welcome via <a href="https://github.com/andy-herman/neural-bridge" class="text-rust-500 underline underline-offset-4">GitHub</a> or LinkedIn.</p>
+      )}
+    </footer>
+  </article>
+</BaseLayout>
