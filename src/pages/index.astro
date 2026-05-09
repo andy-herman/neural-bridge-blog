@@ -21,8 +21,6 @@ const recent = allPosts.slice(0, 5);
     </p>
   </section>
 
-  <Subscribe />
-
   <section>
     <div class="flex items-baseline justify-between mb-2 mt-2">
       <p class="font-mono text-xs text-rust-500 uppercase tracking-wider">// Recent</p>
@@ -30,7 +28,7 @@ const recent = allPosts.slice(0, 5);
     </div>
     {recent.length === 0 && (
       <div class="py-10 text-center">
-        <p class="font-serif italic text-cream-800 dark:text-cream-300">No posts yet. Subscribe and you'll get the first one.</p>
+        <p class="font-serif italic text-cream-800 dark:text-cream-300">No posts yet. Subscribe below and you'll get the first one.</p>
       </div>
     )}
     <div class="editorial-list">
@@ -49,6 +47,8 @@ const recent = allPosts.slice(0, 5);
   </section>
 
   <Divider />
+
+  <Subscribe />
 
   <section>
     <p class="font-serif italic text-cream-800 dark:text-cream-200 leading-relaxed">
