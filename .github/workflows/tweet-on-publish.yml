@@ -1,22 +1,25 @@
-# Auto-post to @Neural_Bridge_ when a new post or research paper is published.
+# Draft a tweet for @Neural_Bridge_ when a new post or research paper is published.
+#
+# This workflow does NOT post to X directly. The X API moved to a metered
+# credits model and the @Neural_Bridge_ account has no posting credits on
+# its current tier. Instead, this workflow:
+#   1. Builds the tweet text it would have posted
+#   2. Adds it to the run summary (visible on the Actions run page)
+#   3. Opens a GitHub issue labeled `tweet-draft` with the text in the body,
+#      so it lands in your inbox as a "post this manually" reminder
 #
 # Triggers:
 #   - push to main (auto-detect newly added/modified content files)
-#   - manual run via the Actions tab (specify a file path optionally)
-#
-# Required secrets (Repo Settings -> Secrets and variables -> Actions):
-#   TWITTER_APP_KEY        — Consumer Key from Twitter Developer Portal
-#   TWITTER_APP_SECRET     — Consumer Secret
-#   TWITTER_ACCESS_TOKEN   — Access Token (generated for your account)
-#   TWITTER_ACCESS_SECRET  — Access Token Secret
+#   - manual run via the Actions tab
 #
 # Behavior:
 #   - Skips drafts (draft: true in frontmatter)
-#   - Skips posts older than 7 days (avoids re-tweeting edits to old posts)
-#   - Tweets format: "🆕 {title}\n\n{description}\n\n{url}" (truncated to 280)
-#   - Research papers tweeted as "📄 New research: {title}..."
+#   - Skips posts older than 7 days
+#   - Honors `[skip-tweet]` in the commit message
+#   - Format: "🆕 {title}\n\n{description}\n\n{url}" (truncated to 280)
+#   - Research papers prefixed with "📄 New research:"
 
-name: Cross-post to Twitter
+name: Draft tweet on publish
 
 on:
   push:
@@ -34,8 +37,11 @@ on:
         type: string
 
 jobs:
-  tweet:
+  draft:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,13 +53,13 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install --no-save gray-matter twitter-api-v2
+        run: npm install --no-save gray-matter
 
-      - name: Detect content files to tweet
+      - name: Detect content files to draft
         id: detect
         shell: bash
         run: |
-          # Allow opting out of tweet via [skip-tweet] in commit message
+          # Allow opting out via [skip-tweet] in commit message
           if [ -z "${{ github.event.inputs.post_file }}" ] && git log -1 --pretty=%B | grep -qF '[skip-tweet]'; then
             echo "Commit message contains [skip-tweet], skipping"
             echo "skip=true" >> $GITHUB_OUTPUT
@@ -75,13 +81,9 @@ jobs:
             cat files.txt
           fi
 
-      - name: Post to Twitter
+      - name: Draft tweet and open issue
         if: steps.detect.outputs.skip != 'true'
         env:
-          TWITTER_APP_KEY: ${{ secrets.TWITTER_APP_KEY }}
-          TWITTER_APP_SECRET: ${{ secrets.TWITTER_APP_SECRET }}
-          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
-          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # Pass each file path as a separate argument
-          xargs -a files.txt node .github/scripts/post-to-twitter.mjs
+          xargs -a files.txt node .github/scripts/draft-tweet.mjs

@@ -27,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,8 +38,8 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Twitter SDK
-        run: npm install --no-save twitter-api-v2
+      - name: Install dependencies
+        run: npm install --no-save gray-matter
 
       - name: Find and flip a scheduled draft
         id: publish
@@ -50,18 +51,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "${{ steps.publish.outputs.file }}"
-          git commit -m "Publish: ${{ steps.publish.outputs.title }}"
+          git commit -m "Publish: ${{ steps.publish.outputs.title }} [skip-tweet]"
           git push
 
       - name: Wait for Vercel deploy
         if: steps.publish.outputs.file != ''
         run: sleep 60
 
-      - name: Tweet the published article
+      - name: Draft tweet and open issue
         if: steps.publish.outputs.file != ''
         env:
-          TWITTER_APP_KEY: ${{ secrets.TWITTER_APP_KEY }}
-          TWITTER_APP_SECRET: ${{ secrets.TWITTER_APP_SECRET }}
-          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
-          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
-        run: node .github/scripts/post-to-twitter.mjs "${{ steps.publish.outputs.file }}"
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/draft-tweet.mjs "${{ steps.publish.outputs.file }}"
