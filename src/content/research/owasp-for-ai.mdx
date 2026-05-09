@@ -1,0 +1,142 @@
+---
+title: "OWASP for AI: What It Is, How to Use It, Why It Matters"
+description: "OWASP didn't pretend AI was a web app. They built a separate project, a separate Top 10, and they're already on the second iteration. Here's the field guide."
+abstract: "The OWASP Generative AI Security Project is the closest thing AI security has to a shared vocabulary. This piece explains what OWASP is, why their AI work is structured separately from web-app guidance, walks through the 2025 Top 10 for LLM Applications and the new 2026 Top 10 for Agentic Applications, and gives three practical ways to actually use the framework: as vocabulary, as self-assessment, and as regulatory backstop."
+pubDate: "2026-05-08"
+topic: "ai-security"
+tags: ["research", "ai-security", "owasp", "frameworks", "governance"]
+status: "working-paper"
+version: "v0.1"
+draft: false
+---
+
+If you've worked in cybersecurity for more than five minutes, you've heard of OWASP. The OWASP Top 10, the list of the most critical web application security risks, has been the de-facto starting point for a generation of security work. Pen test reports cite it. Compliance frameworks reference it. Job descriptions list it.
+
+When AI started shipping in production, OWASP didn't pretend it was a web app. They built a separate project, a separate list, and they're already on the second iteration. If you're going to work in AI security, or even just build with AI, this is the framework you should know first.
+
+## What OWASP is, in 60 seconds
+
+The [Open Worldwide Application Security Project](https://owasp.org/) is a non-profit foundation that publishes free, vendor-neutral security guidance. It's where the industry centralizes its best knowledge about how things break. The OWASP Top 10 for Web Applications, originally published in 2003 and updated periodically, became the closest thing the field had to a shared vocabulary.
+
+OWASP doesn't tell you HOW to fix things in detail. It tells you what to worry about and roughly why. Specific implementation is left to teams, books, vendors, and consultants. That looseness is the point. The Top 10 is a starting position, not a checklist.
+
+## The OWASP Generative AI Security Project
+
+In 2023, when LLMs began landing in production, OWASP launched a dedicated initiative: the [OWASP Generative AI Security Project](https://genai.owasp.org/). It's grown fast. As of 2025-2026, the project covers:
+
+- Top 10 for LLM Applications, risks specific to systems that wrap LLMs
+- Top 10 for Agentic Applications, newer, focused on autonomous AI agents
+- AI Security Solutions Landscape, quarterly reports on the vendor ecosystem
+- Adversarial red-teaming methods for GenAI
+- Best practices for governance and oversight
+
+The first list, the [OWASP Top 10 for LLM Applications 2025](https://genai.owasp.org/llm-top-10/), is what most practitioners encounter first. Let me walk through it.
+
+## The 2025 Top 10 for LLM Apps
+
+Briefly, top down:
+
+**LLM01: Prompt Injection.** User input (or content from external sources the LLM reads) hijacks the model's behavior. Indirect prompt injection (where the malicious content arrives via a document or URL the model fetches) is harder to detect than direct injection. This is the biggest single category. We cover it at depth in Memory Poisoning in Personal Agentic AI Substrates.
+
+**LLM02: Sensitive Information Disclosure.** The model leaks data it shouldn't. Training data leaks, system prompt leakage, RAG documents that bleed across users. Promoted from #6 to #2 in 2025 due to real-world incidents.
+
+**LLM03: Supply Chain.** The model itself, the embeddings, the third-party tools it calls. All dependencies are attack surface. Promoted to #3.
+
+**LLM04: Data and Model Poisoning.** Adversarial data in training, fine-tuning, or knowledge-base corpora. AgentPoison and PoisonedRAG (covered in the memory-poisoning paper) are the academic benchmarks.
+
+**LLM05: Improper Output Handling.** Treating LLM output as trusted when it shouldn't be. Classic example: passing model output directly into SQL or shell.
+
+**LLM06: Excessive Agency.** Giving an agent more authority than it needs (tool access, permissions, autonomy) so a successful prompt injection has a bigger blast radius.
+
+**LLM07: System Prompt Leakage.** Adversaries extract your system prompt and use it to plan attacks or replicate your product.
+
+**LLM08: Vector and Embedding Weaknesses.** RAG-specific. Embedding inversion, similarity-based exfiltration, retrieval poisoning.
+
+**LLM09: Misinformation.** The model confidently states things that are wrong and downstream systems treat as true. Replaced "Overreliance" in 2025.
+
+**LLM10: Unbounded Consumption.** DoS by burning your tokens, quota, or compute. Includes prompt-driven cost attacks.
+
+If you internalize nothing else, this list will get you 80% of the way to thinking sensibly about AI security risk.
+
+## The 2026 Top 10 for Agentic Applications
+
+In December 2024, OWASP launched the [Agentic AI Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/) to specifically address autonomous AI systems and multi-step agent workflows. The result, the [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/), is a separate list.
+
+The reason it had to be separate: agentic risks aren't a strict subset of LLM-app risks. New attack patterns emerge when an LLM has tools, persistent memory, and multi-step planning. A non-exhaustive sample:
+
+- **Tool misuse and confused-deputy attacks** — agent calls a sensitive tool because of indirect injection
+- **Memory-based attacks** — long-term memory poisoning is in this list
+- **Multi-agent collusion or cross-contamination** — agents that talk to each other amplify single-point compromises
+- **Goal subversion** — an attacker shifts the agent's objective without changing the system prompt
+- **Resource exhaustion at the agent level** — runaway loops, infinite delegation, cost-spiral DoS
+
+For build-in-public people like me building [Neural Bridge](https://neural-bridge.dev), the agentic list is the more relevant one. Most of my Layer 4 and Layer 5 threats in the Neural Bridge security architecture map directly into it.
+
+## How to actually use OWASP for AI
+
+Three pragmatic uses, in order of effort:
+
+### 1. As a vocabulary
+
+The simplest use is just internalizing the list as a mental model. When someone says "we should worry about LLM05," you should know they mean improper output handling, and ask follow-up questions. This is the dev-team-watercooler version. It's surprisingly powerful at making conversations efficient.
+
+### 2. As a self-assessment
+
+Walk through each Top 10 item against your system and answer "are we exposed to this, and if yes, what's our control?" The answers will be uneven. That's fine. The exercise is the value.
+
+For a personal project: maybe 30 minutes. For a small SaaS: a half-day. For an enterprise system: a sprint, and you'll find things.
+
+A useful template:
+
+```
+LLM01 — Prompt Injection
+  Exposure: [yes/no/partial]
+  Vector(s): [where adversarial input could enter]
+  Current control: [what stops it]
+  Residual risk: [what remains; rate L/M/H]
+```
+
+Run it down the list. Write the answers down. Revisit quarterly.
+
+### 3. As a regulatory backstop
+
+This is where OWASP earns its keep in 2026. Multiple regulations now reference recognized AI security frameworks as the basis of "reasonable" risk management. The [Colorado AI Act](https://leg.colorado.gov/bill_files/47770/download) explicitly accepts the [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework), [ISO/IEC 42001](https://www.iso.org/standard/81230.html), or other internationally recognized frameworks as an affirmative defense. OWASP's Top 10 isn't itself a management system, but it's the kind of framework auditors and regulators recognize when you point at it. (Companion piece: AI Security Regulation in 2026.)
+
+If you're a security team responding to "demonstrate your AI risk program," you almost certainly want OWASP cited somewhere in the answer.
+
+## What OWASP for AI doesn't cover well
+
+Honest limitations worth knowing:
+
+- **Deep technical mitigations.** The Top 10 tells you to worry about prompt injection. It doesn't tell you the best filter. That's left to vendors, papers, and your judgment.
+- **Adversarial machine learning specifics.** Pre-LLM AI security research (model inversion, membership inference, evasion attacks) is alive and well, mostly outside OWASP's scope. For that, look to the [NIST Adversarial Machine Learning Taxonomy](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-2e2025.pdf) and academic literature.
+- **Sector-specific compliance.** Healthcare, finance, government: OWASP doesn't replace HIPAA, DORA, or FedRAMP requirements. It complements them.
+- **Operational specifics.** Incident response, SOC integration, threat intelligence: OWASP is high-level guidance, not a runbook.
+
+The Top 10 is a starting position. Treat it that way.
+
+## How to keep up
+
+OWASP moves fast in AI. Practical sources:
+
+- [OWASP GenAI Security Project blog](https://genai.owasp.org/) for official updates
+- The two Top 10 lists, both with version histories on GitHub
+- The Solutions Landscape reports, quarterly
+- Local OWASP chapters often run AI security meetups; useful for both networking and seeing what's actually getting deployed
+
+If you're going to focus your reading time, prioritize the LLM Top 10 → the Agentic Top 10 → the Solutions Landscape, in that order.
+
+## Further reading
+
+- [OWASP Top 10 for LLM Applications 2025](https://genai.owasp.org/llm-top-10/) — the canonical list
+- [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) — the agent-specific list
+- [OWASP GenAI Security Project home](https://genai.owasp.org/) — the parent project
+- [OWASP AI Exchange](https://owaspai.org/docs/ai_security_overview/) — broader AI security overview, more technical depth
+- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework) — the parallel framework most US compliance work cites
+- [ISO/IEC 42001](https://www.iso.org/standard/81230.html) — the international AI management system standard
+
+## See also
+
+- 01 - Memory Poisoning in Personal Agentic AI Substrates — companion paper digging into LLM01 / LLM04 / LLM08
+- 01 - AI Security Regulation in 2026 — companion piece on the regulatory side
+- Security Architecture — Neural Bridge threat model, mapped to agentic risks
