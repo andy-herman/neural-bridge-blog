@@ -50,7 +50,7 @@ try {
       const hasAvatar = availableAvatars.has(agent.data.id);
       return (
         <a
-          href={agent.data.plugin_file_url}
+          href={`/agents/${agent.data.id}`}
           class="group block border border-cream-200 dark:border-cream-900 rounded-lg overflow-hidden hover:border-rust-500 transition-colors bg-cream-50 dark:bg-cream-950"
         >
           <div class="h-1.5" style={`background-color: ${accent};`} aria-hidden="true"></div>
@@ -85,7 +85,7 @@ try {
               {agent.data.role_tagline}
             </p>
             <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 group-hover:text-rust-500 transition-colors">
-              View charter &rarr;
+              View profile &rarr;
             </p>
           </div>
         </a>
@@ -96,7 +96,7 @@ try {
   <div class="mt-16 border border-dashed border-cream-300 dark:border-cream-800 rounded p-6 text-center">
     <p class="font-mono text-xs text-cream-600 dark:text-cream-500 uppercase tracking-wider mb-2">// how the roster grows</p>
     <p class="font-serif italic text-sm text-cream-800 dark:text-cream-200 max-w-2xl mx-auto">
-      When a recurring task doesn't fit an existing specialist, the recruiter agent runs a multi-turn intake, drafts a charter, and emits a structured action that ships the new agent end-to-end — plugin file, version bump, branch, PR. Detail cards per agent ship in a follow-on PR.
+      When a recurring task doesn't fit an existing specialist, the recruiter agent runs a multi-turn intake, drafts a charter, and emits a structured action that ships the new agent end-to-end — plugin file, version bump, branch, PR.
     </p>
   </div>
 </BaseLayout>
