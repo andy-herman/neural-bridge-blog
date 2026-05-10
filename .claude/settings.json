@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Write(.claude/settings.json)",
+      "Edit(.claude/settings.json)"
+    ]
+  }
+}

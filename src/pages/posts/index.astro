@@ -7,7 +7,7 @@ import { readingTime } from '../../lib/reading-time';
 const posts = (await getCollection('posts', ({ data }) => !data.draft))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 ---
-<BaseLayout title="Posts · neural-bridge.dev">
+<BaseLayout title="Posts · neural-bridge.dev" wide>
   <header class="mb-10 pt-4">
     <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-3">// All posts</p>
     <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight" style="font-variation-settings: 'opsz' 96, 'SOFT' 60;">Posts</h1>
