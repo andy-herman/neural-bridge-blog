@@ -4,27 +4,6 @@ import BaseLayout from '../components/BaseLayout.astro';
 import Subscribe from '../components/Subscribe.astro';
 import Divider from '../components/Divider.astro';
 
-// --------- Build log: 12 most recent, compact list-form rendering ----------
-
-const buildlog = (await getCollection('buildlog'))
-  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-  .slice(0, 12);
-
-// Kind → text-color (mirrors the /buildlog page for identity consistency).
-const KIND_COLOR: Record<string, string> = {
-  milestone: 'text-rust-500',
-  post: 'text-rust-600',
-  release: 'text-cream-700 dark:text-cream-300',
-  feature: 'text-cream-700 dark:text-cream-300',
-  hardening: 'text-cream-600 dark:text-cream-400',
-  fix: 'text-cream-600 dark:text-cream-400',
-  note: 'text-cream-500 dark:text-cream-500',
-};
-
-function dayLabel(d: Date): string {
-  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-}
-
 // --------- Recent articles: unified feed across posts + research + projects ----------
 
 type ArticleType = 'post' | 'research' | 'project';
@@ -66,7 +45,7 @@ const projects = (await getCollection('projects'))
 
 const allArticles: UnifiedItem[] = [...posts, ...research, ...projects]
   .sort((a, b) => b.date.valueOf() - a.date.valueOf())
-  .slice(0, 8);
+  .slice(0, 12);
 
 const TYPE_LABEL: Record<ArticleType, string> = {
   post: 'post',
@@ -88,29 +67,6 @@ function dateLabel(d: Date): string {
       Notes, decisions, and code from <a href="/projects/neural-bridge" class="text-rust-500 underline underline-offset-4 decoration-1 hover:decoration-2">Neural Bridge</a> and the other things I'm building. Cross-posted to LinkedIn where they fit.
     </p>
   </section>
-
-  {buildlog.length > 0 && (
-    <section class="mb-14 border-t border-cream-200 dark:border-cream-900 pt-6">
-      <div class="flex items-baseline justify-between mb-5">
-        <p class="font-mono text-xs text-rust-500 uppercase tracking-wider">// Latest from the build log</p>
-        <a href="/buildlog" class="font-mono text-xs uppercase tracking-wider text-cream-800 dark:text-cream-300 hover:text-rust-500 transition-colors">All entries &rarr;</a>
-      </div>
-      <ol class="space-y-3.5">
-        {buildlog.map(entry => {
-          const kindColor = KIND_COLOR[entry.data.kind] || 'text-rust-500';
-          return (
-            <li>
-              <a href="/buildlog" class="flex flex-wrap items-baseline gap-x-3 gap-y-1 group">
-                <span class={`font-mono text-xs uppercase tracking-wider min-w-[5.5rem] ${kindColor}`}>// {entry.data.kind}</span>
-                <time class="font-mono text-xs text-cream-700 dark:text-cream-400 min-w-[3.5rem]" datetime={entry.data.date.toISOString()}>{dayLabel(entry.data.date)}</time>
-                <span class="font-serif text-base sm:text-lg text-cream-900 dark:text-cream-100 group-hover:text-rust-500 transition-colors leading-snug">{entry.data.title}</span>
-              </a>
-            </li>
-          );
-        })}
-      </ol>
-    </section>
-  )}
 
   {allArticles.length > 0 && (
     <section class="mb-14 border-t border-cream-200 dark:border-cream-900 pt-6">
