@@ -1,0 +1,111 @@
+---
+title: "The 6 layers, and why the back of house matters more than the dashboard"
+description: "Most people building a personal AI system start with the dashboard. They sketch a UI. They argue about dark mode. The lesson I learned the hard way: the back of house matters more."
+abstract: "A personal AI system is six independently-swappable layers: agents, skills, transport, shared state, orchestration, frontend. The dashboard is last, not first. This piece argues the build order matters because each layer teaches you the requirements for the next, and shows where Neural Bridge sits in mid-2026 across all six."
+pubDate: "2026-05-18"
+topic: "agentic-ai-security"
+tags: ["research", "personal-ai", "agentic-ai-architecture", "build-in-public", "neural-bridge"]
+status: "working-paper"
+version: "v0.1"
+draft: true
+---
+
+Most people building a personal AI system start with the dashboard. They sketch a UI. They pick a framework. They name the kanban columns. They argue about dark mode.
+
+I almost did this too. Then I noticed every working personal-AI demo I admired had something boring in common: their dashboards were rough. The state underneath was meticulous.
+
+This is the lesson I learned the hard way and the build order I now recommend. Six layers, bottom up, frontend last.
+
+## The 6 layers, named
+
+[Neural Bridge](/) is built as six independently-swappable layers:
+
+| # | Layer | Concretely, in this build |
+|---|---|---|
+| 1 | **Agents** | Per-role config files in `~/.claude/agents/*.md` with YAML frontmatter (description, tools, model, mcpServers, skills). Each is a specialized Claude Code instance. |
+| 2 | **Skills** | Reusable capabilities in `~/.claude/skills/*` that all agents inherit (pptx, docx, web research, build-in-public voice rules, coding discipline). |
+| 3 | **Transport** | How I talk to the system from somewhere other than my desk. For Neural Bridge: a Discord bot bridging to a Mac Mini supervisor. |
+| 4 | **Shared state** | Local SQLite + sqlite-vec for embeddings; markdown files for the wiki layer; macOS keychain for secrets. The substrate everything else reads from and writes into. |
+| 5 | **Orchestration** | The supervisor process that wires the previous four together. For me: a Python `discord.py` daemon spawning `claude -p` subprocesses, scheduled via `launchd`. |
+| 6 | **Frontend** | A web dashboard, browsable kanban, hive feed, schedule, memory search. |
+
+Each layer is replaceable. Swap Discord for Telegram and only layer 3 changes. Swap SQLite for Postgres and only layer 4 changes. Swap `discord.py` for a Node bot and only layer 5 changes. The interfaces between layers are narrow on purpose.
+
+## Build order: 1 → 2 → 3 → 4 → 5 → 6
+
+Don't skip ahead. The frontend is **last**, not first.
+
+This is the part most people get wrong, and it's worth dwelling on.
+
+A dashboard is decoration on top of state. If layer 4 is solid, the visualization is trivial: any framework you pick will render a clean board against clean data. If layer 4 is wrong, no frontend will save you. Beautiful skin on a bag of mush is worse than a flat task log on top of well-shaped tables, because the dashboard hides the rot.
+
+I have watched several friends build elaborate kanban UIs over half-formed schemas, then rebuild the schema mid-flight, then try to make the UI absorb the migration. It is a special kind of suffering.
+
+If you build the layers in order, you discover what state you actually need by living with each previous layer. By the time you reach layer 4, you know the schema because you've already worked without it for three weeks. By the time you reach layer 6, the only question left is taste.
+
+## Why layer 4 is the keystone
+
+Layers 1 and 2 give you specialized agents and reusable capabilities. Layers 3 and 5 wire them up. Layer 6 lets you see what's happening.
+
+But layer 4, **shared state**, is what makes the system *compound*. It's why an agent that researched a topic last Tuesday can be useful to a different agent on Sunday. It's why your conversation history is queryable. It's why the second hour of work can stand on the shoulders of the first.
+
+Get layer 4 right and the system gets smarter the longer you use it. Get layer 4 wrong and the system forgets every Sunday at 11:59 pm.
+
+Concretely, layer 4 holds:
+
+- The wiki of cross-agent concept articles, the synthesized knowledge layer
+- Per-agent session notes and daily logs (the raw inputs the wiki compiles from)
+- The conversation history index, with embeddings, so semantic search just works
+- Provenance metadata on everything, so a poisoned entry can always be traced
+- The kanban itself, currently as GitHub issues with a six-label state machine
+
+The dashboard reads all of this. The agents read all of this. The orchestrator coordinates against it. Layer 4 is not a database; it's the substrate.
+
+## The dashboard temptation, explained
+
+Why does everyone want to build the dashboard first? Because the dashboard is the only layer that's *visible*. Everything else is plumbing. You can show a dashboard to a friend in five minutes and have them understand what you're building. You can't show them an SQLite schema with sqlite-vec embeddings.
+
+But "demos well" and "works well" are different problems. The dashboard makes the system show its work. It does not do the work.
+
+Building the dashboard first means picking the wrong abstractions for layer 4 because you didn't know yet what you needed. Then those abstractions calcify, because the dashboard is already wired against them, and migrating gets expensive. Six months in, you have a beautiful dashboard pointing at a half-baked state model, and the system can't grow.
+
+I'd rather have a flat task log against a great schema for three months and a polished dashboard added in week 13 than a polished dashboard from day one against a schema I'll regret.
+
+## What I built and what I haven't
+
+To make this concrete, here's where Neural Bridge sits as of mid-May 2026:
+
+- **Layer 1 (agents):** done. Nine specialists in a Claude Code plugin: research, teaching-prep, content, senior-pm, social, recruiter, automation-engineer, security-reviewer, docs-editor.
+- **Layer 2 (skills):** done. Three user-level skills (`hey-luna`, `goodbye`, `coding-discipline`) plus the in-agent skill references.
+- **Layer 3 (transport):** done. Discord bot daemon. The 9 agents each have their own visible Discord identity, with senior-pm registering slash commands and the others speaking on hand-off.
+- **Layer 4 (state):** mostly done. The wiki + daily-logs + filing-gate compile pipeline is shipped. SQLite + embeddings is in the design but not yet ported (the corpus is too small to need vector search yet).
+- **Layer 5 (orchestration):** done. The Python supervisor is running as a `launchd` user agent on a Mac Mini, restarting on crash, posting to keychain-stored Discord webhooks.
+- **Layer 6 (frontend):** not yet. The current "frontend" is Discord plus the GitHub issue board. There is no web dashboard.
+
+That last bullet is on purpose. I'll know what to build for layer 6 once I have a few more weeks of layer 4 telling me what I actually want to look at.
+
+## What this means for you, building your own
+
+If you're starting:
+
+1. **Pick the agents first.** What are the 3-5 things you want help with that have different enough tone or skill that one prompt won't cut it? Each becomes an agent.
+2. **Define their shared skills.** What capabilities should every agent have access to? Those are skills.
+3. **Pick a transport.** Discord, Telegram, Slack, terminal, doesn't matter. It just needs to be lower-friction than opening a laptop.
+4. **Design layer 4 like it's a product.** This is the layer that compounds. Spend the time. Borrow from [Karpathy's LLM knowledge base gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) or [Cole Medin's claude-memory-compiler](https://github.com/coleam00/claude-memory-compiler). Don't invent here.
+5. **Wire it up with the simplest orchestrator that works.** Cron, launchd, a long-running Python script, a TypeScript daemon. Whatever you can debug in your sleep.
+6. **Then, finally, the dashboard.** When you can already operate the system without one, build the visualization that makes operating it nicer.
+
+The build order isn't ideology. It's the order in which information becomes available about what each layer should do. Each layer teaches you the requirements for the next.
+
+## Where this came from
+
+The 6-layer decomposition isn't original to me; it's been kicking around the personal-AI builder community for a year. What I'm contributing here is the build order argument: **frontend is last, layer 4 is the keystone, dashboards lie to you about progress.**
+
+If you're going to take one thing from this piece, it's that. Build the back of house first. The front of house is decoration on top.
+
+## See also
+
+- [OWASP for AI](/research/owasp-for-ai) — the technical-control framework I'm aligning Neural Bridge against
+- [Memory Poisoning in Personal Agentic AI Substrates](/research/memory-poisoning-in-personal-agentic-ai-substrates) — what happens at layer 4 when you don't gate the writes
+- [Karpathy's LLM Knowledge Bases gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — the layer-4 pattern Neural Bridge is built on
+- [Cole Medin's claude-memory-compiler](https://github.com/coleam00/claude-memory-compiler) — the first open-source implementation of the same pattern

@@ -1,13 +1,30 @@
 ---
 title: "AI Security Regulation in 2026: What Practitioners Need to Know"
 description: "If you build, deploy, or use AI in production right now, you're being regulated by people you've never met. Here's the lay of the land."
-abstract: "The AI security regulatory landscape in 2026 is fragmented across jurisdictions, fast-moving across calendar quarters, and sometimes contradictory. This piece walks through the four jurisdictions that matter most for working practitioners (EU, US federal, US states, UK), explains how the major frameworks (EU AI Act, NIST AI RMF, ISO/IEC 42001, Colorado AI Act, NIS2, DORA) interlock, and gives a concrete picture of what compliance actually looks like for a typical product team."
+abstract: "The AI security regulatory landscape in 2026 is fragmented across jurisdictions, fast-moving across calendar quarters, and sometimes contradictory. This piece walks through the four jurisdictions that matter most for working practitioners (EU, US federal, US states, UK), explains how the major frameworks (EU AI Act, NIST AI RMF, ISO/IEC 42001, Colorado AI Act, NIS2, DORA) interlock, and gives a concrete picture of what compliance actually looks like for a typical product team. v0.2 adds a TL;DR, a skip-to-your-situation navigator, and a what-changes-by-team-size table."
 pubDate: "2026-05-09"
+updatedDate: "2026-05-09"
 topic: "compliance-risk"
 tags: ["research", "compliance", "ai-regulation", "eu-ai-act", "nist", "iso-42001", "governance"]
 status: "working-paper"
-version: "v0.1"
+version: "v0.2"
 draft: false
+---
+
+> **TL;DR.** Four jurisdictions matter for most working practitioners: the EU (most prescriptive, AI Act fully applicable August 2026), the US federal level (NIST AI RMF, voluntary but de-facto standard), US states (fragmented; Colorado is the test case, June 30 2026), and the UK (third path). For most teams, your AI compliance is the *intersection* of one of these AI-specific regulations and your sector regulations (HIPAA, DORA, NIS2, GDPR). NIST AI RMF + ISO/IEC 42001 cover the largest fraction of every other framework. Personal projects are mostly out of the regulatory net.
+
+## Skip to your situation
+
+| If you... | Read this section |
+|---|---|
+| Sell into the EU at all | [The EU AI Act](#the-eu-ai-act) |
+| Are US-based, building any AI product | [NIST AI RMF](#the-us-federal-landscape-nist-ai-rmf) |
+| Sell into Colorado or any other US state | [US state-level regulation](#us-state-level-regulation) |
+| Need a certification you can show enterprises | [ISO/IEC 42001](#isoiec-42001) |
+| Are in finance, healthcare, or critical infrastructure | [Sector-specific overlays](#sector-specific-overlays) |
+| Are building a personal AI project | [What this means for personal projects](#what-this-means-for-personal-projects-like-neural-bridge) |
+| Want to know what to actually do this quarter | [How they intersect](#how-they-intersect) |
+
 ---
 
 If you build, deploy, or use AI in production right now, you're being regulated by people you've never met. Some of those regulations took effect this year. More are coming. The landscape is fragmented across jurisdictions, fast-moving across calendar quarters, and sometimes contradictory across regulators. It's also the most consequential thing happening in cybersecurity policy in a generation.
@@ -27,14 +44,18 @@ I'll walk through each, then knit them together.
 
 ## The EU AI Act
 
+> **Skip if:** you have zero EU exposure (no EU customers, no EU users, no EU employees touching the AI). Otherwise read.
+
 The [EU AI Act](https://artificialintelligenceact.eu/) is the world's first comprehensive AI regulation. It entered force in August 2024 and is fully applicable in August 2026. Some categories of high-risk AI got a transition extension to December 2027 in the recent [Digital Omnibus amendment](https://www.consilium.europa.eu/en/press/press-releases/2026/05/07/artificial-intelligence-council-and-parliament-agree-to-simplify-and-streamline-rules/).
 
 The Act's core mechanism is **risk tiering**:
 
-- **Prohibited.** AI uses banned outright. Social scoring by governments, certain biometric identification, manipulative AI exploiting vulnerable groups. These provisions have been in effect since February 2025.
-- **High-risk.** AI in safety-critical or rights-affecting domains. This is where most of the compliance work lives. Examples: hiring software, credit scoring, medical AI, education assessment, infrastructure safety. Subject to extensive documentation, risk management, human oversight, and conformity-assessment requirements. CE marking required.
-- **Limited risk.** Things like chatbots and emotion-recognition systems. Mostly transparency obligations.
-- **Minimal risk.** Most AI applications. Encouraged but not required to follow voluntary codes of conduct.
+| Tier | What it covers | Compliance weight |
+|---|---|---|
+| **Prohibited** | Social scoring by governments, certain biometric ID, manipulative AI exploiting vulnerable groups | In effect since Feb 2025. You either don't do these, or you stop. |
+| **High-risk** | Hiring software, credit scoring, medical AI, education assessment, infrastructure safety. Annex III is the official list. | Heavy. Documentation, risk management, human oversight, conformity assessment, CE marking. |
+| **Limited risk** | Chatbots, emotion-recognition systems | Mostly transparency obligations. |
+| **Minimal risk** | Most AI applications | Voluntary codes of conduct. |
 
 For practitioners, the questions are concrete:
 
@@ -42,20 +63,23 @@ For practitioners, the questions are concrete:
 2. **Is your AI on the high-risk list (Annex III)?** If yes, the heavy compliance kicks in.
 3. **Are you using a General-Purpose AI model (a foundation model)?** Specific obligations have applied to those since August 2025.
 
-The penalty structure is stiff. Up to €35M or 7% of global annual turnover for prohibited-use violations. Up to €15M or 3% for other violations. The pattern (and the percentages) will sound familiar to anyone who lived through GDPR. That is not an accident.
+The penalty structure is stiff. Up to **€35M or 7% of global annual turnover** for prohibited-use violations. Up to **€15M or 3%** for other violations. The pattern (and the percentages) will sound familiar to anyone who lived through GDPR. That is not an accident.
 
 If you operate in or sell into the EU and your AI does anything in the high-risk list, you should already be deep in this. If your AI is generic and doesn't touch a high-risk domain, you have lighter obligations but real ones, particularly around transparency.
 
 ## The US federal landscape: NIST AI RMF
 
+> **Skip if:** you have no US exposure. Otherwise this is your single most important framework.
+
 The US doesn't have a federal equivalent of the EU AI Act. What it does have is the [NIST AI Risk Management Framework (AI RMF)](https://www.nist.gov/itl/ai-risk-management-framework), originally released January 2023 and substantially expanded with the [Generative AI Profile (NIST AI 600-1)](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf) in July 2024.
 
-Key points:
+Three things to know:
 
 - **It's voluntary.** No fines for not adopting it. But...
 - **It's the de-facto US standard.** Federal agencies, federal contractors, and most large enterprises use it as their reference framework.
 - **It's structured around four functions:** Govern, Map, Measure, Manage. You build a program that does all four; the details are organization-specific.
-- **The Generative AI Profile adds 200+ specific suggested actions** for managing GenAI-specific risks: confabulation, harmful content, privacy leaks, environmental impact, misuse.
+
+The Generative AI Profile adds **200+ specific suggested actions** for managing GenAI-specific risks: confabulation, harmful content, privacy leaks, environmental impact, misuse.
 
 Why does voluntary matter? Because **state-level regulation is increasingly using NIST AI RMF as the baseline for what "reasonable" risk management means.** Colorado's AI Act explicitly accepts NIST conformance as an affirmative defense. Other state bills follow the same pattern.
 
@@ -63,9 +87,11 @@ If you operate in the US and want a single framework to orient around, this is i
 
 ## US state-level regulation
 
+> **Skip if:** you don't sell software that makes consequential decisions about people in any US state. Otherwise read.
+
 The US is regulating AI state by state. The pattern is fragmented and accelerating.
 
-The most consequential is the [Colorado AI Act (SB 24-205)](https://leg.colorado.gov/bill_files/47770/download), which takes effect June 30, 2026 (delayed from February 2026). It applies to high-risk AI in employment, housing, education, healthcare, insurance, legal, and financial services. Key requirements:
+The most consequential is the [Colorado AI Act (SB 24-205)](https://leg.colorado.gov/bill_files/47770/download), which takes effect **June 30, 2026** (delayed from February 2026). It applies to high-risk AI in employment, housing, education, healthcare, insurance, legal, and financial services. Key requirements:
 
 - **Risk Management Program** aligned with NIST AI RMF, ISO/IEC 42001, or another recognized framework
 - **Impact assessments** within 90 days of deployment, repeated annually and after major changes
@@ -78,6 +104,8 @@ For practitioners: if you sell software that makes consequential decisions about
 
 ## ISO/IEC 42001
 
+> **Skip if:** you're early-stage and not selling to enterprises that ask for certifications. Otherwise this is the most useful single thing to align toward.
+
 [ISO/IEC 42001:2023](https://www.iso.org/standard/81230.html) is the first international standard for AI Management Systems. It's the AI equivalent of ISO 27001 (information security) and ISO 9001 (quality management).
 
 Why it matters: it is **certifiable**. Organizations can hire an accredited auditor, get certified to ISO 42001, and use that certification as evidence of responsible AI governance. Several regulations explicitly accept ISO 42001 conformance as compliance evidence, including the Colorado AI Act's affirmative-defense clause.
@@ -86,15 +114,19 @@ For most companies: if you're going to formalize an AI program, ISO 42001 is the
 
 ## Sector-specific overlays
 
-Most practitioners face regulations beyond the AI-specific ones above. A few overlays that matter:
+> **Skip if:** you're a generic SaaS / developer tool with no regulated-industry customers. Read if any of HIPAA, DORA, NIS2, FedRAMP, or GDPR ring bells.
 
-- **NIS2 (Network and Information Security Directive 2).** EU cybersecurity directive that increasingly catches AI systems handling critical-infrastructure or essential-services data. AI security falls within its operational-security obligations. Transposition deadline was October 2024; member-state laws are landing in 2025 and 2026.
-- **DORA (Digital Operational Resilience Act).** EU financial-services regulation requiring ICT risk management, including AI used in financial decisions. Took effect January 2025.
-- **HIPAA.** US healthcare privacy. AI processing PHI is in scope. The HIPAA Security Rule maps reasonably onto AI risk management with some new wrinkles around training data.
-- **FedRAMP.** US government cloud authorization. Generative AI services for government use have additional requirements through the FedRAMP Emerging Technology Prioritization Framework.
-- **GDPR.** Predates AI but applies to AI processing personal data. Article 22 (automated decision-making) is suddenly very relevant.
+Most practitioners face regulations beyond the AI-specific ones above. The overlays that matter:
 
-For most teams, your AI compliance is the **intersection** of AI-specific regulations and your sector-specific regulations. The practical work is the joint mapping.
+| Regulation | Scope | What changed for AI |
+|---|---|---|
+| **NIS2** (Network and Information Security Directive 2) | EU; cybersecurity for critical infrastructure / essential services | AI security falls within operational-security obligations. Member-state laws landing 2025-2026. |
+| **DORA** (Digital Operational Resilience Act) | EU financial services | Required ICT risk management, including AI used in financial decisions. In effect Jan 2025. |
+| **HIPAA** | US healthcare privacy | AI processing PHI is in scope. Security Rule maps onto AI risk management with new wrinkles around training data. |
+| **FedRAMP** | US government cloud authorization | GenAI services for government use have additional requirements via the Emerging Technology Prioritization Framework. |
+| **GDPR** | EU personal data | Predates AI but applies. Article 22 (automated decision-making) is suddenly very relevant. |
+
+For most teams, **your AI compliance is the intersection of AI-specific regulations and your sector-specific regulations.** The practical work is the joint mapping.
 
 ## How they intersect
 
@@ -107,9 +139,20 @@ Real compliance for a US-based SaaS product with EU customers and an AI feature,
 5. Layer **sector overlays** (HIPAA, DORA, etc.) where they apply.
 6. Consider **ISO 42001 certification** if you sell to enterprises that ask for it.
 
-This is a lot. The good news is it's tractable: most of these frameworks are designed to be compatible, not contradictory. A well-built NIST AI RMF program covers maybe 70% of what ISO 42001 wants and 60% of what the EU AI Act wants for high-risk systems.
+This is a lot. The good news is it's tractable: most of these frameworks are designed to be compatible, not contradictory. **A well-built NIST AI RMF program covers maybe 70% of what ISO 42001 wants and 60% of what the EU AI Act wants for high-risk systems.**
 
 The bad news: that last 30-40% is non-trivial, and it's the part most companies don't realize they're missing until an audit.
+
+## What changes by team size and role
+
+| Team / role | What you should do this quarter |
+|---|---|
+| Solo / pre-PMF | Read NIST AI RMF (4 hours). Don't build a compliance program; just don't actively trip the EU AI Act prohibited list or Colorado's consequential-decision triggers. |
+| Series A/B startup, EU customers | Read the EU AI Act risk tiers (1 hour). Self-assess against Annex III. If any feature is high-risk, start the conformity-assessment conversation now. |
+| Series A/B startup, US-only | Adopt NIST AI RMF. Cover Govern + Map this quarter; Measure and Manage next quarter. |
+| Mid-market, mixed jurisdictions | Hire fractional GRC. ISO 42001 alignment is the cheapest path to multi-framework coverage. Certify when revenue demands it. |
+| Enterprise | You already have GRC. Make sure they have AI-specific subject-matter expertise. The generalist program won't cover the GenAI Profile's 200+ actions. |
+| Personal / hobbyist | Mostly out of scope. Watch for the threshold where your project becomes a service to other people. |
 
 ## How to keep up
 
@@ -121,7 +164,7 @@ The landscape moves quarterly. Sources I recommend:
 - The [OWASP GenAI Security Project](https://genai.owasp.org/) for the technical-control side of compliance
 - [Future of Privacy Forum](https://fpf.org/) for thoughtful policy analysis without being pure advocacy
 
-For a working professional, 30 minutes a week is enough to stay roughly current. The big-block reads (the AI Act itself, NIST AI RMF documents, ISO 42001) are 4-8 hours each.
+For a working professional, **30 minutes a week is enough to stay roughly current.** The big-block reads (the AI Act itself, NIST AI RMF documents, ISO 42001) are 4-8 hours each.
 
 ## What this means for personal projects like Neural Bridge
 
@@ -144,6 +187,5 @@ For now, Neural Bridge is in scope for OWASP's technical guidance, out of scope 
 
 ## See also
 
-- Security Architecture — Neural Bridge's threat model and how it sits in this landscape
-- 01 - OWASP for AI — companion paper on technical-control frameworks
-- 01 - Memory Poisoning in Personal Agentic AI Substrates — concrete LLM01 / LLM04 / LLM08 deep dive
+- [OWASP for AI](/research/owasp-for-ai) — companion paper on technical-control frameworks
+- [Memory Poisoning in Personal Agentic AI Substrates](/research/memory-poisoning-in-personal-agentic-ai-substrates) — concrete LLM01 / LLM04 / LLM08 deep dive
