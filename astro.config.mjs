@@ -5,6 +5,13 @@ import tailwind from '@astrojs/tailwind';
 
 export default defineConfig({
   site: 'https://neural-bridge.dev',
+  i18n: {
+    defaultLocale: 'en',
+    locales: ['en', 'ko'],
+    routing: {
+      prefixDefaultLocale: false,
+    },
+  },
   integrations: [mdx(), sitemap(), tailwind()],
   markdown: {
     shikiConfig: {

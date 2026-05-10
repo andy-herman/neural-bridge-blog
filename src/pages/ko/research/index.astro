@@ -1,0 +1,95 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../components/BaseLayout.astro';
+import { t } from '../../../lib/i18n';
+
+const locale = 'ko';
+const s = t(locale);
+
+const TOPIC_ORDER = ['agentic-ai-security', 'ai-security', 'development-playbooks', 'compliance-risk'] as const;
+const TOPIC_LABELS_KO: Record<string, string> = {
+  'ai-security': 'AI 보안',
+  'agentic-ai-security': '에이전틱 AI 보안',
+  'development-playbooks': '개발 플레이북',
+  'compliance-risk': '컴플라이언스와 리스크',
+};
+const STATUS_LABELS_KO: Record<string, string> = {
+  'working-paper': '워킹 페이퍼',
+  'draft': '드래프트',
+  'published': '게시됨',
+};
+
+const enPapers = (await getCollection('research', ({ data, id }) => !data.draft && !id.startsWith('ko/')))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const koPapers = await getCollection('research', ({ id }) => id.startsWith('ko/'));
+const koSlugMap = new Map(koPapers.map(p => [p.slug.replace(/^ko\//, ''), p]));
+
+interface DisplayPaper {
+  href: string;
+  title: string;
+  description: string;
+  pubDate: Date;
+  topic: string;
+  status: string;
+  version?: string;
+  translated: boolean;
+}
+
+const papers: DisplayPaper[] = enPapers.map(en => {
+  const ko = koSlugMap.get(en.slug);
+  const d = ko ?? en;
+  return {
+    href: `/ko/research/${en.slug}`,
+    title: d.data.title,
+    description: d.data.description,
+    pubDate: d.data.pubDate,
+    topic: en.data.topic,
+    status: d.data.status,
+    version: d.data.version,
+    translated: !!ko,
+  };
+});
+
+const byTopic = TOPIC_ORDER
+  .map(topic => ({ topic, papers: papers.filter(p => p.topic === topic) }))
+  .filter(g => g.papers.length > 0);
+
+function dateLabel(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth() + 1;
+  const day = d.getUTCDate();
+  return `${y}년 ${m}월 ${day}일`;
+}
+---
+<BaseLayout title="리서치 · neural-bridge.dev" wide locale={locale}>
+  <header class="mb-12 pt-4">
+    <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-3">{s.pages.research_kicker}</p>
+    <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight mb-4" style="font-variation-settings: 'opsz' 96, 'SOFT' 60;">{s.pages.research_title}</h1>
+    <p class="font-serif italic text-lg text-cream-800 dark:text-cream-200 max-w-xl">{s.pages.research_blurb}</p>
+  </header>
+
+  {papers.length === 0 && (<p class="font-serif italic text-cream-800 dark:text-cream-300">아직 리서치가 없습니다.</p>)}
+
+  {byTopic.map(({ topic, papers: topicPapers }) => (
+    <section class="mb-10">
+      <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-2 border-t border-cream-200 dark:border-cream-900 pt-6">{TOPIC_LABELS_KO[topic] || topic}</p>
+      <div class="editorial-list">
+        {topicPapers.map(p => (
+          <article class="py-7">
+            <a href={p.href} class="block group">
+              <div class="flex flex-wrap items-baseline gap-x-3 font-mono text-[11px] tracking-wider uppercase text-cream-800 dark:text-cream-300 mb-2.5">
+                <time>{dateLabel(p.pubDate)}</time>
+                <span class="text-rust-500">/ {TOPIC_LABELS_KO[p.topic] || p.topic}</span>
+                {p.status && <span class="opacity-60">· {STATUS_LABELS_KO[p.status] || p.status}</span>}
+                {p.version && <span class="opacity-60">· {p.version}</span>}
+                {!p.translated && (<span class="text-cream-500 dark:text-cream-600">· 번역 준비 중</span>)}
+              </div>
+              <h2 class="font-serif text-2xl sm:text-[1.75rem] font-semibold tracking-tight group-hover:text-rust-500 transition-colors leading-tight mb-3" style="font-variation-settings: 'opsz' 60, 'SOFT' 50;">{p.title}</h2>
+              <p class="text-cream-800 dark:text-cream-200 leading-relaxed">{p.description}</p>
+            </a>
+          </article>
+        ))}
+      </div>
+    </section>
+  ))}
+</BaseLayout>

@@ -1,0 +1,12 @@
+---
+import BaseLayout from '../../components/BaseLayout.astro';
+import TranslationPending from '../../components/TranslationPending.astro';
+
+const locale = 'ko';
+---
+<BaseLayout title="소개 · neural-bridge.dev" locale={locale}>
+  <header class="mb-8 pt-4">
+    <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight" style="font-variation-settings: 'opsz' 96, 'SOFT' 60;">소개</h1>
+  </header>
+  <TranslationPending locale={locale} englishHref="/about" englishTitle="About" />
+</BaseLayout>

@@ -1,0 +1,156 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../../components/BaseLayout.astro';
+import TranslationPending from '../../../components/TranslationPending.astro';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { t } from '../../../lib/i18n';
+
+const locale = 'ko';
+const s = t(locale);
+
+export async function getStaticPaths() {
+  const enAgents = await getCollection('agents', ({ id }) => !id.startsWith('ko/'));
+  const koAgents = await getCollection('agents', ({ id }) => id.startsWith('ko/'));
+  const koMap = new Map(koAgents.map(a => [a.data.id, a]));
+  return enAgents.map(en => ({
+    params: { id: en.data.id },
+    props: {
+      enAgent: en,
+      koAgent: koMap.get(en.data.id) ?? null,
+    },
+  }));
+}
+
+const { enAgent, koAgent } = Astro.props;
+const display = koAgent ?? enAgent;
+const translated = !!koAgent;
+const { Content } = translated ? await render(koAgent) : { Content: null };
+
+const COLOR_HEX: Record<string, string> = {
+  red: '#dc2626', orange: '#ea580c', yellow: '#ca8a04', green: '#16a34a',
+  blue: '#2563eb', purple: '#9333ea', cyan: '#0891b2', pink: '#db2777',
+  white: '#a8a29e', magenta: '#c026d3',
+};
+const accent = COLOR_HEX[enAgent.data.color] || '#a8a29e';
+
+const publicAgentsDir = path.resolve('./public/agents');
+let hasAvatar = false;
+try { await fs.access(path.join(publicAgentsDir, `${enAgent.data.id}.png`)); hasAvatar = true; } catch {}
+---
+<BaseLayout title={`${display.data.display_name} · neural-bridge.dev`} wide locale={locale}>
+  <article class="my-6">
+    <a href="/ko/agents" class="inline-block mb-6 font-mono text-xs uppercase tracking-wider text-cream-700 dark:text-cream-300 hover:text-rust-500 transition-colors">
+      &larr; 에이전트 전체
+    </a>
+
+    <div class="border border-cream-200 dark:border-cream-900 rounded-xl overflow-hidden bg-cream-50 dark:bg-cream-950">
+      <div class="h-1.5" style={`background-color: ${accent};`} aria-hidden="true"></div>
+      <div class="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-0">
+        <aside class="p-6 sm:p-8 border-b md:border-b-0 md:border-r border-cream-200 dark:border-cream-900">
+          <p class="font-mono text-[11px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-4">
+            {s.agent_detail.system_kicker}
+          </p>
+          <div class="aspect-square rounded-lg overflow-hidden mb-5 bg-cream-100 dark:bg-cream-900 flex items-center justify-center">
+            {hasAvatar ? (
+              <img src={`/agents/${enAgent.data.id}.png`} alt={display.data.display_name} width="512" height="512" class="w-full h-full object-cover" />
+            ) : (
+              <div class="flex flex-col items-center justify-center text-center p-4">
+                <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-1">{s.agent_detail.no_avatar}</p>
+                <p class="font-serif text-lg font-semibold text-cream-700 dark:text-cream-300">{display.data.display_name}</p>
+              </div>
+            )}
+          </div>
+          <div class="flex items-baseline gap-x-2 mb-4 flex-wrap">
+            <span class="font-mono text-[11px] uppercase tracking-wider" style={`color: ${accent};`}>// {enAgent.data.color}</span>
+            {enAgent.data.is_orchestrator && (
+              <span class="font-mono text-[11px] uppercase tracking-wider text-rust-500">{s.agent_detail.orchestrator_badge}</span>
+            )}
+          </div>
+          <div class="border-t border-cream-200 dark:border-cream-900 pt-4">
+            <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-1.5">{s.agent_detail.discord_mention_label}</p>
+            <code class="font-mono text-sm text-rust-600 dark:text-rust-400 select-all">{enAgent.data.discord_mention}</code>
+          </div>
+          <div class="border-t border-cream-200 dark:border-cream-900 mt-4 pt-4">
+            <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-1.5">{s.agent_detail.model_label}</p>
+            <code class="font-mono text-xs text-cream-800 dark:text-cream-200">{enAgent.data.model}</code>
+          </div>
+        </aside>
+
+        <div class="p-6 sm:p-8">
+          <p class="font-mono text-xs uppercase tracking-wider mb-2" style={`color: ${accent};`}>
+            {s.agent_detail.character_kicker}
+          </p>
+          <h1 class="font-serif text-3xl sm:text-4xl font-semibold tracking-tight mb-8 leading-tight" style={`color: ${accent}; font-variation-settings: 'opsz' 96, 'SOFT' 60;`}>
+            {display.data.display_name}
+          </h1>
+
+          {!translated && (
+            <div class="mb-8">
+              <TranslationPending locale={locale} englishHref={`/agents/${enAgent.data.id}`} englishTitle={enAgent.data.display_name} />
+            </div>
+          )}
+
+          <section class="mb-8 border-t border-cream-200 dark:border-cream-900 pt-5">
+            <div class="flex items-center gap-2.5 mb-3">
+              <h2 class="font-mono text-xs uppercase tracking-wider text-rust-500">{s.agent_detail.role_section}</h2>
+            </div>
+            <p class="font-serif italic text-base sm:text-lg text-cream-800 dark:text-cream-100 leading-snug mb-3">
+              {display.data.role_tagline}
+            </p>
+            {translated && Content && (
+              <div class="prose prose-cream dark:prose-invert prose-sm max-w-none">
+                <Content />
+              </div>
+            )}
+          </section>
+
+          {display.data.operating_principles.length > 0 && (
+            <section class="mb-8 border-t border-cream-200 dark:border-cream-900 pt-5">
+              <h2 class="font-mono text-xs uppercase tracking-wider text-rust-500 mb-3">{s.agent_detail.principles_section}</h2>
+              <ol class="space-y-2.5 list-none">
+                {display.data.operating_principles.map((p: string, i: number) => (
+                  <li class="flex gap-3">
+                    <span class="font-mono text-xs text-cream-500 dark:text-cream-600 mt-1 shrink-0">0{i + 1}</span>
+                    <span class="text-cream-800 dark:text-cream-100 leading-relaxed">{p}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          <section class="border-t border-cream-200 dark:border-cream-900 pt-5">
+            <h2 class="font-mono text-xs uppercase tracking-wider text-rust-500 mb-3">{s.agent_detail.scope_section}</h2>
+            {display.data.does_not_own && (
+              <div class="mb-4">
+                <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-1">{s.agent_detail.does_not_own_label}</p>
+                <p class="text-cream-800 dark:text-cream-100 leading-relaxed text-sm">{display.data.does_not_own}</p>
+              </div>
+            )}
+            {enAgent.data.tools.length > 0 && (
+              <div class="mb-4">
+                <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-2">{s.agent_detail.tools_label}</p>
+                <ul class="flex flex-wrap gap-1.5">
+                  {enAgent.data.tools.map((tool: string) => (
+                    <li>
+                      <span class="inline-block font-mono text-[11px] px-2 py-0.5 rounded border border-cream-300 dark:border-cream-700 text-cream-800 dark:text-cream-200">{tool}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div class="pt-2">
+              <a href={enAgent.data.plugin_file_url} target="_blank" rel="noopener" class="inline-block font-mono text-xs uppercase tracking-wider text-rust-600 dark:text-rust-400 hover:text-rust-700 dark:hover:text-rust-300 underline underline-offset-4 decoration-1">
+                {s.agent_detail.view_charter_external}
+              </a>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <p class="mt-8 font-serif italic text-sm text-cream-700 dark:text-cream-300 text-center">
+      {s.agent_detail.canonical_footer}
+    </p>
+  </article>
+</BaseLayout>

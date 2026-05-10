@@ -1,0 +1,184 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../components/BaseLayout.astro';
+import Subscribe from '../../components/Subscribe.astro';
+import Divider from '../../components/Divider.astro';
+import { t, localePath } from '../../lib/i18n';
+
+const locale = 'ko';
+const s = t(locale);
+
+// Recent articles: unified feed across posts + research + projects, KO versions
+// where they exist, falling back to English entries (so the page never feels
+// empty during the bulk-translation rollout). Each item carries its translated
+// status so the card can mark it as untranslated.
+
+type ArticleType = 'post' | 'research' | 'project';
+interface UnifiedItem {
+  type: ArticleType;
+  href: string;
+  title: string;
+  description: string;
+  date: Date;
+  translated: boolean;
+}
+
+function localizeSlug(id: string): string {
+  return id.replace(/^ko\//, '');
+}
+
+const enPosts = await getCollection('posts', ({ data, id }) => !data.draft && !id.startsWith('ko/'));
+const koPosts = await getCollection('posts', ({ id }) => id.startsWith('ko/'));
+const koPostSlugs = new Set(koPosts.map(p => localizeSlug(p.id).replace(/\.mdx?$/, '')));
+
+const posts: UnifiedItem[] = [];
+for (const p of koPosts) {
+  posts.push({
+    type: 'post',
+    href: `/ko/posts/${localizeSlug(p.slug)}`,
+    title: p.data.title,
+    description: p.data.description,
+    date: p.data.pubDate,
+    translated: true,
+  });
+}
+for (const p of enPosts) {
+  const slugNoExt = p.slug.replace(/\.mdx?$/, '');
+  if (koPostSlugs.has(slugNoExt)) continue;
+  posts.push({
+    type: 'post',
+    href: `/ko/posts/${p.slug}`,
+    title: p.data.title,
+    description: p.data.description,
+    date: p.data.pubDate,
+    translated: false,
+  });
+}
+
+const enResearch = await getCollection('research', ({ data, id }) => !data.draft && !id.startsWith('ko/'));
+const koResearch = await getCollection('research', ({ id }) => id.startsWith('ko/'));
+const koResearchSlugs = new Set(koResearch.map(r => localizeSlug(r.id).replace(/\.mdx?$/, '')));
+
+const research: UnifiedItem[] = [];
+for (const r of koResearch) {
+  research.push({
+    type: 'research',
+    href: `/ko/research/${localizeSlug(r.slug)}`,
+    title: r.data.title,
+    description: r.data.description,
+    date: r.data.pubDate,
+    translated: true,
+  });
+}
+for (const r of enResearch) {
+  const slugNoExt = r.slug.replace(/\.mdx?$/, '');
+  if (koResearchSlugs.has(slugNoExt)) continue;
+  research.push({
+    type: 'research',
+    href: `/ko/research/${r.slug}`,
+    title: r.data.title,
+    description: r.data.description,
+    date: r.data.pubDate,
+    translated: false,
+  });
+}
+
+const enProjects = await getCollection('projects', ({ id }) => !id.startsWith('ko/'));
+const koProjects = await getCollection('projects', ({ id }) => id.startsWith('ko/'));
+const koProjectSlugs = new Set(koProjects.map(p => localizeSlug(p.id).replace(/\.mdx?$/, '')));
+
+const projects: UnifiedItem[] = [];
+for (const p of koProjects) {
+  projects.push({
+    type: 'project',
+    href: `/ko/projects/${localizeSlug(p.slug)}`,
+    title: p.data.title,
+    description: p.data.description,
+    date: p.data.started,
+    translated: true,
+  });
+}
+for (const p of enProjects) {
+  const slugNoExt = p.slug.replace(/\.mdx?$/, '');
+  if (koProjectSlugs.has(slugNoExt)) continue;
+  projects.push({
+    type: 'project',
+    href: `/ko/projects/${p.slug}`,
+    title: p.data.title,
+    description: p.data.description,
+    date: p.data.started,
+    translated: false,
+  });
+}
+
+const allArticles: UnifiedItem[] = [...posts, ...research, ...projects]
+  .sort((a, b) => b.date.valueOf() - a.date.valueOf())
+  .slice(0, 12);
+
+const TYPE_LABEL: Record<ArticleType, string> = {
+  post: '포스트',
+  research: '리서치',
+  project: '프로젝트',
+};
+
+function dateLabel(d: Date): string {
+  // Korean date format: 2026년 5월 10일
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth() + 1;
+  const day = d.getUTCDate();
+  return `${y}년 ${m}월 ${day}일`;
+}
+---
+<BaseLayout title="neural-bridge.dev" wide locale={locale}>
+  <section class="mb-14 pt-4">
+    <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-5">{s.pages.home_kicker}</p>
+    <h1 class="font-serif text-5xl sm:text-6xl font-semibold tracking-tight leading-[0.95] mb-6" style="font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;">
+      {s.pages.home_title_pre} <em class="italic text-rust-500" style="font-variation-settings: 'opsz' 144, 'SOFT' 100, 'WONK' 1;">{s.pages.home_title_em}</em>
+    </h1>
+    <p class="text-lg sm:text-xl text-cream-800 dark:text-cream-200 leading-relaxed max-w-xl" set:html={s.pages.home_blurb_html}></p>
+  </section>
+
+  {allArticles.length > 0 && (
+    <section class="mb-14 border-t border-cream-200 dark:border-cream-900 pt-6">
+      <div class="flex items-baseline justify-between mb-5 flex-wrap gap-y-1">
+        <p class="font-mono text-xs text-rust-500 uppercase tracking-wider">// 최근 글</p>
+        <p class="font-mono text-xs uppercase tracking-wider text-cream-700 dark:text-cream-400">
+          <a href={localePath(locale, '/posts')} class="hover:text-rust-500 transition-colors">포스트</a>
+          <span class="text-cream-500 dark:text-cream-600"> · </span>
+          <a href={localePath(locale, '/research')} class="hover:text-rust-500 transition-colors">리서치</a>
+          <span class="text-cream-500 dark:text-cream-600"> · </span>
+          <a href={localePath(locale, '/projects')} class="hover:text-rust-500 transition-colors">프로젝트</a>
+        </p>
+      </div>
+      <div class="editorial-list">
+        {allArticles.map(item => (
+          <article class="py-6">
+            <a href={item.href} class="block group">
+              <div class="flex flex-wrap items-baseline gap-x-3 font-mono text-[11px] tracking-wider uppercase mb-2.5">
+                <span class="text-rust-500">// {TYPE_LABEL[item.type]}</span>
+                <time class="text-cream-700 dark:text-cream-400">{dateLabel(item.date)}</time>
+                {!item.translated && (
+                  <span class="text-cream-500 dark:text-cream-600">· 번역 준비 중</span>
+                )}
+              </div>
+              <h2 class="font-serif text-xl sm:text-2xl font-semibold tracking-tight group-hover:text-rust-500 transition-colors leading-tight mb-2" style="font-variation-settings: 'opsz' 60, 'SOFT' 50;">
+                {item.title}
+              </h2>
+              <p class="text-cream-800 dark:text-cream-200 leading-relaxed">{item.description}</p>
+            </a>
+          </article>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <Divider />
+
+  <Subscribe />
+
+  <section>
+    <p class="font-serif italic text-cream-800 dark:text-cream-200 leading-relaxed">
+      대부분 저 자신을 위해 도구를 만듭니다. 가끔 그 과정에 대해 글을 씁니다.
+    </p>
+  </section>
+</BaseLayout>
