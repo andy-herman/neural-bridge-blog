@@ -1,17 +1,22 @@
 # Scheduled publishing.
 #
-# Once a week (Saturday 21:00 UTC ≈ 1pm PST / 2pm PDT), find one queued
-# article (draft: true) whose pubDate has arrived, flip it to published,
-# push the change, and post the tweet.
+# Once a week (Tuesday 01:00 UTC ≈ Monday 17:00 PST / 18:00 PDT), find
+# one queued article (draft: true) whose pubDate has arrived, flip it
+# to published, push the change, and draft a tweet (as a GitHub issue
+# for manual posting). Vercel auto-deploys on push to main.
 #
-# Queue an article for future publication by setting:
+# Pairs with `prepare_week.py` in the neural-bridge repo, which runs
+# Sunday 18:00 PT and generates LinkedIn + X drafts in the Obsidian
+# vault so Andy can review them ahead of Monday's flip.
+#
+# Queue an article by setting:
 #   draft: true
-#   pubDate: 2026-05-23   # the Saturday it should publish
-# in its frontmatter and pushing. The cron will pick it up on that
-# Saturday (or any later Saturday if it gets backlogged).
+#   pubDate: 2026-05-18   # the Monday it should publish
+# in its frontmatter and pushing. The cron picks it up on the Tuesday
+# UTC run that follows that Monday (or any later run if backlogged).
 #
 # If multiple drafts qualify on the same run, the oldest pubDate wins.
-# The remaining drafts wait until the next Saturday.
+# The remaining drafts wait until the next Monday.
 #
 # Manual run via the Actions tab is also supported.
 
@@ -19,7 +24,7 @@ name: Scheduled publish
 
 on:
   schedule:
-    - cron: '0 21 * * 6'  # Saturday 21:00 UTC; ~2pm Pacific (year-round, ±1h DST)
+    - cron: '0 1 * * 2'  # Tuesday 01:00 UTC = Monday 17:00 PST / 18:00 PDT
   workflow_dispatch:
 
 jobs:
