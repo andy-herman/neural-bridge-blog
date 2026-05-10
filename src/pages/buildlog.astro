@@ -12,6 +12,18 @@ const KIND_LABELS: Record<string, string> = {
   note: 'note',
 };
 
+// Kind → text-color class. Within the existing palette only.
+// rust = site signature (high signal). cream = neutral / utility tones.
+const KIND_COLOR: Record<string, string> = {
+  milestone: 'text-rust-500',
+  post: 'text-rust-600',
+  release: 'text-cream-700 dark:text-cream-300',
+  feature: 'text-cream-700 dark:text-cream-300',
+  hardening: 'text-cream-600 dark:text-cream-400',
+  fix: 'text-cream-600 dark:text-cream-400',
+  note: 'text-cream-500 dark:text-cream-500',
+};
+
 const PROJECT_LABELS: Record<string, string> = {
   'neural-bridge': 'neural-bridge',
   'neural-bridge-blog': 'neural-bridge-blog',
@@ -21,6 +33,8 @@ const PROJECT_LABELS: Record<string, string> = {
 
 const allEntries = (await getCollection('buildlog'))
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const latestEntryId = allEntries[0]?.id;
 
 // Group by month bucket: "May 2026", etc.
 function monthKey(d: Date): string {
@@ -33,16 +47,12 @@ const byMonth = allEntries.reduce<Record<string, typeof allEntries>>((acc, entry
   return acc;
 }, {});
 
-// Render bodies once at build time so we can stream them inline
-const renderedBodies: Record<string, string> = {};
-for (const entry of allEntries) {
-  const { Content } = await render(entry);
-  // Astro's render returns a component; we'll pass the entry through and render in template instead
-  renderedBodies[entry.id] = entry.body;
-}
-
 function dayLabel(d: Date): string {
   return d.toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+function entryCountLabel(n: number): string {
+  return n === 1 ? '1 entry' : `${n} entries`;
 }
 ---
 <BaseLayout title="Build log · neural-bridge.dev">
@@ -60,26 +70,36 @@ function dayLabel(d: Date): string {
 
   {Object.entries(byMonth).map(([month, monthEntries]) => (
     <section class="mb-12">
-      <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-4 border-t border-cream-200 dark:border-cream-900 pt-6">{month}</p>
+      <p class="font-mono text-xs uppercase tracking-wider mb-4 border-t border-cream-200 dark:border-cream-900 pt-6">
+        <span class="text-rust-500">{month}</span>
+        <span class="text-cream-600 dark:text-cream-500"> · {entryCountLabel(monthEntries.length)}</span>
+      </p>
       <ol class="space-y-8">
         {monthEntries.map(async (entry) => {
           const { Content } = await render(entry);
+          const kindColor = KIND_COLOR[entry.data.kind] || 'text-rust-500';
+          const isLatest = entry.id === latestEntryId;
           return (
             <li class="border-l border-cream-200 dark:border-cream-900 pl-6">
-              <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-2">
-                <span class="font-mono text-xs text-rust-500 uppercase tracking-wider">// {KIND_LABELS[entry.data.kind] || entry.data.kind}</span>
+              <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-1.5">
+                <span class={`font-mono text-xs uppercase tracking-wider ${kindColor}`}>
+                  // {KIND_LABELS[entry.data.kind] || entry.data.kind}{isLatest && (<span class="text-rust-500"> · latest</span>)}
+                </span>
                 <time class="font-mono text-xs text-cream-700 dark:text-cream-400" datetime={entry.data.date.toISOString()}>{dayLabel(entry.data.date)}</time>
                 <span class="font-mono text-xs text-cream-600 dark:text-cream-500">{PROJECT_LABELS[entry.data.project] || entry.data.project}</span>
               </div>
               <h2 class="font-serif text-xl sm:text-2xl font-semibold tracking-tight mb-3">{entry.data.title}</h2>
-              <div class="prose prose-cream dark:prose-invert prose-sm max-w-none mb-3">
+              <div class="prose prose-cream dark:prose-invert prose-sm max-w-none mb-4">
                 <Content />
               </div>
               {entry.data.links.length > 0 && (
-                <ul class="flex flex-wrap gap-3 font-mono text-xs">
+                <ul class="flex flex-wrap gap-2">
                   {entry.data.links.map(link => (
                     <li>
-                      <a href={link.url} class="text-rust-600 dark:text-rust-400 hover:text-rust-700 dark:hover:text-rust-300 underline-offset-2 hover:underline">
+                      <a
+                        href={link.url}
+                        class="inline-block font-mono text-xs px-2.5 py-0.5 rounded-full border border-cream-300 dark:border-cream-700 text-cream-800 dark:text-cream-200 hover:border-rust-500 hover:text-rust-600 dark:hover:text-rust-400 transition-colors"
+                      >
                         {link.label}
                       </a>
                     </li>
@@ -92,4 +112,13 @@ function dayLabel(d: Date): string {
       </ol>
     </section>
   ))}
+
+  {allEntries.length > 0 && (
+    <div class="mt-16 border border-dashed border-cream-300 dark:border-cream-800 rounded p-6 text-center">
+      <p class="font-mono text-xs text-cream-600 dark:text-cream-500 uppercase tracking-wider mb-2">// adding to the feed</p>
+      <p class="font-serif italic text-sm text-cream-800 dark:text-cream-200 max-w-xl mx-auto">
+        Manual entries land in <code class="font-mono text-xs not-italic text-rust-600 dark:text-rust-400">src/content/buildlog/&lt;YYYY-MM-DD&gt;-&lt;slug&gt;.md</code>. Auto-sync from merged PRs across <code class="font-mono text-xs not-italic text-rust-600 dark:text-rust-400">neural-bridge</code> and <code class="font-mono text-xs not-italic text-rust-600 dark:text-rust-400">neural-bridge-blog</code> ships in a follow-on PR.
+      </p>
+    </div>
+  )}
 </BaseLayout>
