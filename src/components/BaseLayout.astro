@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Nav from './Nav.astro';
 import Footer from './Footer.astro';
+import type { Locale } from '../lib/i18n';
 
 export interface Props {
   title: string;
@@ -11,13 +12,21 @@ export interface Props {
   // grids, the buildlog, and the homepage cards opt in to wide (max-w-6xl
   // ≈ 1152px) so they can breathe on desktop instead of feeling boxed in.
   wide?: boolean;
+  // Locale for this page. Korean pages pass 'ko'; everything else defaults
+  // to 'en'. Drives html[lang], Nav labels, Footer text, and the toggle.
+  locale?: Locale;
 }
-const { title, description = 'Build-in-public hub for Neural Bridge and other projects.', wide = false } = Astro.props;
+const {
+  title,
+  description = 'Build-in-public hub for Neural Bridge and other projects.',
+  wide = false,
+  locale = 'en',
+} = Astro.props;
 
 const widthClass = wide ? 'max-w-6xl' : 'max-w-2xl';
 ---
 <!doctype html>
-<html lang="en" class="h-full">
+<html lang={locale} class="h-full">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -47,10 +56,10 @@ const widthClass = wide ? 'max-w-6xl' : 'max-w-2xl';
     <title>{title}</title>
   </head>
   <body class="bg-cream-100 text-cream-900 dark:bg-cream-950 dark:text-cream-100 antialiased min-h-full flex flex-col">
-    <Nav wide={wide} />
+    <Nav wide={wide} locale={locale} />
     <main class={`flex-1 w-full ${widthClass} mx-auto px-6 py-12 sm:py-16`}>
       <slot />
     </main>
-    <Footer wide={wide} />
+    <Footer wide={wide} locale={locale} />
   </body>
 </html>

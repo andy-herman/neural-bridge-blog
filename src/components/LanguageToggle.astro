@@ -1,0 +1,93 @@
+---
+// Language toggle — sits in the Footer on every page.
+//
+// Behavior:
+//   - Shows two segmented buttons: EN | 한국어
+//   - The active one is rendered in rust-500 (matches the site's signature
+//     accent); the inactive one is muted cream
+//   - Clicking the inactive one navigates to the equivalent URL in the
+//     other locale (computed at render time via toggleLocale)
+//   - On click, also writes the chosen locale to localStorage so a reader
+//     who picked Korean once gets bounced to /ko on next visit (handled
+//     by a small client-side script below)
+//
+// No em dashes, no decorative chars beyond the | separator.
+
+import { t, toggleLocale, type Locale } from '../lib/i18n';
+
+export interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const s = t(locale);
+
+// Resolve the URL the toggle should send the reader to in the OTHER locale.
+// At build time we don't have the runtime pathname, so we compute from
+// Astro.url.pathname which IS available statically per page.
+const currentPath = Astro.url.pathname;
+const enHref = toggleLocale(currentPath, locale, 'en');
+const koHref = toggleLocale(currentPath, locale, 'ko');
+---
+<div
+  class="inline-flex items-baseline gap-1 font-mono text-xs"
+  role="group"
+  aria-label={s.toggle.aria_label}
+>
+  <a
+    href={enHref}
+    data-toggle-lang="en"
+    class={locale === 'en'
+      ? 'text-rust-500 font-medium'
+      : 'text-cream-700 dark:text-cream-400 hover:text-rust-500 transition-colors'}
+    aria-current={locale === 'en' ? 'true' : undefined}
+  >{s.toggle.en_label}</a>
+  <span class="opacity-40">|</span>
+  <a
+    href={koHref}
+    data-toggle-lang="ko"
+    class={locale === 'ko'
+      ? 'text-rust-500 font-medium'
+      : 'text-cream-700 dark:text-cream-400 hover:text-rust-500 transition-colors'}
+    aria-current={locale === 'ko' ? 'true' : undefined}
+  >{s.toggle.ko_label}</a>
+</div>
+
+<script>
+  // Persist the toggle choice. On click, store the chosen locale in
+  // localStorage. On page load, if the visitor has a stored preference
+  // and they're on the wrong locale's URL, bounce them once to the
+  // matching URL. This is a soft preference — they can always toggle
+  // back via the buttons and the new choice overrides.
+  const KEY = 'nb-locale-preference';
+
+  // Persist on click.
+  document.querySelectorAll<HTMLAnchorElement>('[data-toggle-lang]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const lang = el.dataset.toggleLang;
+      if (lang) localStorage.setItem(KEY, lang);
+    });
+  });
+
+  // Soft redirect on load if the stored preference differs from the
+  // current locale on the page. We detect current locale by checking
+  // the URL prefix: starts with `/ko` → ko, otherwise → en.
+  const stored = localStorage.getItem(KEY);
+  if (stored === 'ko' || stored === 'en') {
+    const path = window.location.pathname;
+    const currentLocale = path === '/ko' || path.startsWith('/ko/') ? 'ko' : 'en';
+    if (stored !== currentLocale) {
+      // Build the equivalent URL in the stored locale and replace().
+      // Mirrors toggleLocale() server-side logic.
+      let stripped = path;
+      if (path === '/ko') stripped = '/';
+      else if (path.startsWith('/ko/')) stripped = path.slice(3);
+      const target = stored === 'en' ? stripped : (stripped === '/' ? '/ko' : `/ko${stripped}`);
+      if (target !== path) {
+        // Mark that we're auto-redirecting so we don't loop on the next page.
+        // (No state machine needed — we only redirect when stored !== current,
+        // and after redirect stored will === new current locale.)
+        window.location.replace(target + window.location.search + window.location.hash);
+      }
+    }
+  }
+</script>
