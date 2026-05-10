@@ -1,14 +1,82 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../components/BaseLayout.astro';
-import PostCard from '../components/PostCard.astro';
 import Subscribe from '../components/Subscribe.astro';
 import Divider from '../components/Divider.astro';
-import { readingTime } from '../lib/reading-time';
 
-const allPosts = (await getCollection('posts', ({ data }) => !data.draft))
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
-const recent = allPosts.slice(0, 5);
+// --------- Build log: 12 most recent, compact list-form rendering ----------
+
+const buildlog = (await getCollection('buildlog'))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 12);
+
+// Kind → text-color (mirrors the /buildlog page for identity consistency).
+const KIND_COLOR: Record<string, string> = {
+  milestone: 'text-rust-500',
+  post: 'text-rust-600',
+  release: 'text-cream-700 dark:text-cream-300',
+  feature: 'text-cream-700 dark:text-cream-300',
+  hardening: 'text-cream-600 dark:text-cream-400',
+  fix: 'text-cream-600 dark:text-cream-400',
+  note: 'text-cream-500 dark:text-cream-500',
+};
+
+function dayLabel(d: Date): string {
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+// --------- Recent articles: unified feed across posts + research + projects ----------
+
+type ArticleType = 'post' | 'research' | 'project';
+
+interface UnifiedItem {
+  type: ArticleType;
+  href: string;
+  title: string;
+  description: string;
+  date: Date;
+}
+
+const posts = (await getCollection('posts', ({ data }) => !data.draft))
+  .map<UnifiedItem>(p => ({
+    type: 'post',
+    href: `/posts/${p.slug}`,
+    title: p.data.title,
+    description: p.data.description,
+    date: p.data.pubDate,
+  }));
+
+const research = (await getCollection('research', ({ data }) => !data.draft))
+  .map<UnifiedItem>(p => ({
+    type: 'research',
+    href: `/research/${p.slug}`,
+    title: p.data.title,
+    description: p.data.description,
+    date: p.data.pubDate,
+  }));
+
+const projects = (await getCollection('projects'))
+  .map<UnifiedItem>(p => ({
+    type: 'project',
+    href: `/projects/${p.slug}`,
+    title: p.data.title,
+    description: p.data.description,
+    date: p.data.started,
+  }));
+
+const allArticles: UnifiedItem[] = [...posts, ...research, ...projects]
+  .sort((a, b) => b.date.valueOf() - a.date.valueOf())
+  .slice(0, 8);
+
+const TYPE_LABEL: Record<ArticleType, string> = {
+  post: 'post',
+  research: 'research',
+  project: 'project',
+};
+
+function dateLabel(d: Date): string {
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).toUpperCase();
+}
 ---
 <BaseLayout title="neural-bridge.dev">
   <section class="mb-14 pt-4">
@@ -21,30 +89,59 @@ const recent = allPosts.slice(0, 5);
     </p>
   </section>
 
-  <section>
-    <div class="flex items-baseline justify-between mb-2 mt-2">
-      <p class="font-mono text-xs text-rust-500 uppercase tracking-wider">// Recent</p>
-      <a href="/posts" class="font-mono text-xs uppercase tracking-wider text-cream-800 dark:text-cream-300 hover:text-rust-500 transition-colors">All posts &rarr;</a>
-    </div>
-    {recent.length === 0 && (
-      <div class="py-10 text-center">
-        <p class="font-serif italic text-cream-800 dark:text-cream-300">No posts yet. Subscribe below and you'll get the first one.</p>
+  {buildlog.length > 0 && (
+    <section class="mb-14 border-t border-cream-200 dark:border-cream-900 pt-6">
+      <div class="flex items-baseline justify-between mb-5">
+        <p class="font-mono text-xs text-rust-500 uppercase tracking-wider">// Latest from the build log</p>
+        <a href="/buildlog" class="font-mono text-xs uppercase tracking-wider text-cream-800 dark:text-cream-300 hover:text-rust-500 transition-colors">All entries &rarr;</a>
       </div>
-    )}
-    <div class="editorial-list">
-      {recent.map((post) => (
-        <PostCard
-          href={`/posts/${post.slug}`}
-          title={post.data.title}
-          description={post.data.description}
-          pubDate={post.data.pubDate}
-          project={post.data.project}
-          tags={post.data.tags}
-          readingTime={readingTime(post.body)}
-        />
-      ))}
-    </div>
-  </section>
+      <ol class="space-y-3.5">
+        {buildlog.map(entry => {
+          const kindColor = KIND_COLOR[entry.data.kind] || 'text-rust-500';
+          return (
+            <li>
+              <a href="/buildlog" class="flex flex-wrap items-baseline gap-x-3 gap-y-1 group">
+                <span class={`font-mono text-xs uppercase tracking-wider min-w-[5.5rem] ${kindColor}`}>// {entry.data.kind}</span>
+                <time class="font-mono text-xs text-cream-700 dark:text-cream-400 min-w-[3.5rem]" datetime={entry.data.date.toISOString()}>{dayLabel(entry.data.date)}</time>
+                <span class="font-serif text-base sm:text-lg text-cream-900 dark:text-cream-100 group-hover:text-rust-500 transition-colors leading-snug">{entry.data.title}</span>
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  )}
+
+  {allArticles.length > 0 && (
+    <section class="mb-14 border-t border-cream-200 dark:border-cream-900 pt-6">
+      <div class="flex items-baseline justify-between mb-5 flex-wrap gap-y-1">
+        <p class="font-mono text-xs text-rust-500 uppercase tracking-wider">// Recent articles</p>
+        <p class="font-mono text-xs uppercase tracking-wider text-cream-700 dark:text-cream-400">
+          <a href="/posts" class="hover:text-rust-500 transition-colors">Posts</a>
+          <span class="text-cream-500 dark:text-cream-600"> · </span>
+          <a href="/research" class="hover:text-rust-500 transition-colors">Research</a>
+          <span class="text-cream-500 dark:text-cream-600"> · </span>
+          <a href="/projects" class="hover:text-rust-500 transition-colors">Projects</a>
+        </p>
+      </div>
+      <div class="editorial-list">
+        {allArticles.map(item => (
+          <article class="py-6">
+            <a href={item.href} class="block group">
+              <div class="flex flex-wrap items-baseline gap-x-3 font-mono text-[11px] tracking-wider uppercase mb-2.5">
+                <span class="text-rust-500">// {TYPE_LABEL[item.type]}</span>
+                <time class="text-cream-700 dark:text-cream-400">{dateLabel(item.date)}</time>
+              </div>
+              <h2 class="font-serif text-xl sm:text-2xl font-semibold tracking-tight group-hover:text-rust-500 transition-colors leading-tight mb-2" style="font-variation-settings: 'opsz' 60, 'SOFT' 50;">
+                {item.title}
+              </h2>
+              <p class="text-cream-800 dark:text-cream-200 leading-relaxed">{item.description}</p>
+            </a>
+          </article>
+        ))}
+      </div>
+    </section>
+  )}
 
   <Divider />
 

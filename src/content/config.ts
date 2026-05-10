@@ -48,4 +48,32 @@ const research = defineCollection({
   }),
 });
 
-export const collections = { posts, projects, research };
+const buildlog = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string(),
+    date: z.coerce.date(),
+    kind: z.enum([
+      'milestone',  // major shipping moment (V1 ship, V2 ship, first post)
+      'release',    // specific feature shipped end-to-end
+      'feature',    // new capability landed
+      'post',       // blog post / research published
+      'hardening',  // operational reliability work
+      'fix',        // bug fix worth surfacing
+      'note',       // operational notes (setup, config, infra)
+    ]).default('feature'),
+    project: z.enum([
+      'neural-bridge',
+      'neural-bridge-blog',
+      'seoul-eland-digest',
+      'cross-cutting',
+    ]).default('neural-bridge'),
+    links: z.array(z.object({
+      label: z.string(),
+      url: z.string(),
+    })).default([]),
+    tags: z.array(z.string()).default([]),
+  }),
+});
+
+export const collections = { posts, projects, research, buildlog };
