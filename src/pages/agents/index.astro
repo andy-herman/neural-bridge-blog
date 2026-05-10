@@ -1,0 +1,102 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../components/BaseLayout.astro';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
+const agents = (await getCollection('agents'))
+  .sort((a, b) => a.data.display_name.localeCompare(b.data.display_name));
+
+// Color → accent class. Stays within the existing palette where possible;
+// for the agent-specific colors that aren't in tailwind.config (yellow,
+// green, blue, purple, magenta, pink, white), use neutral cream tones for
+// the stripe and let the color label carry the signal in text.
+const COLOR_HEX: Record<string, string> = {
+  red: '#dc2626',
+  orange: '#ea580c',
+  yellow: '#ca8a04',
+  green: '#16a34a',
+  blue: '#2563eb',
+  purple: '#9333ea',
+  cyan: '#0891b2',
+  pink: '#db2777',
+  white: '#a8a29e',
+  magenta: '#c026d3',
+};
+
+// Check which agents have a fetched avatar at build time. Build is OK even
+// without — placeholder renders instead.
+const publicAgentsDir = path.resolve('./public/agents');
+let availableAvatars: Set<string>;
+try {
+  const files = await fs.readdir(publicAgentsDir);
+  availableAvatars = new Set(files.filter(f => f.endsWith('.png')).map(f => f.replace(/\.png$/, '')));
+} catch {
+  availableAvatars = new Set();
+}
+---
+<BaseLayout title="Agents · neural-bridge.dev">
+  <header class="mb-12 pt-4">
+    <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-3">// The roster</p>
+    <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight mb-4" style="font-variation-settings: 'opsz' 96, 'SOFT' 60;">Agents</h1>
+    <p class="font-serif italic text-lg text-cream-800 dark:text-cream-200 max-w-2xl">
+      Thirteen specialists sharing a markdown wiki memory, reachable from Discord. Each one owns a narrow scope; the orchestrator routes work; the wiki compounds across sessions.
+    </p>
+  </header>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    {agents.map(agent => {
+      const accent = COLOR_HEX[agent.data.color] || '#a8a29e';
+      const hasAvatar = availableAvatars.has(agent.data.id);
+      return (
+        <a
+          href={`/agents/${agent.data.id}`}
+          class="group block border border-cream-200 dark:border-cream-900 rounded-lg overflow-hidden hover:border-rust-500 transition-colors bg-cream-50 dark:bg-cream-950"
+        >
+          <div class="h-1.5" style={`background-color: ${accent};`} aria-hidden="true"></div>
+          <div class="p-5">
+            <div class="aspect-square rounded-md overflow-hidden mb-4 bg-cream-100 dark:bg-cream-900 flex items-center justify-center">
+              {hasAvatar ? (
+                <img
+                  src={`/agents/${agent.data.id}.png`}
+                  alt={`${agent.data.display_name} avatar`}
+                  width="512"
+                  height="512"
+                  loading="lazy"
+                  class="w-full h-full object-cover"
+                />
+              ) : (
+                <div class="flex flex-col items-center justify-center text-center p-4">
+                  <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-1">// no avatar</p>
+                  <p class="font-serif text-xl font-semibold text-cream-700 dark:text-cream-300">{agent.data.display_name}</p>
+                </div>
+              )}
+            </div>
+            <div class="flex items-baseline gap-x-2 mb-1.5">
+              <span class="font-mono text-[11px] uppercase tracking-wider" style={`color: ${accent};`}>// {agent.data.color}</span>
+              {agent.data.is_orchestrator && (
+                <span class="font-mono text-[11px] uppercase tracking-wider text-rust-500">· orchestrator</span>
+              )}
+            </div>
+            <h2 class="font-serif text-xl font-semibold tracking-tight mb-2 group-hover:text-rust-500 transition-colors leading-tight" style="font-variation-settings: 'opsz' 60, 'SOFT' 50;">
+              {agent.data.display_name}
+            </h2>
+            <p class="font-serif italic text-sm text-cream-700 dark:text-cream-300 leading-snug mb-3">
+              {agent.data.role_tagline}
+            </p>
+            <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 group-hover:text-rust-500 transition-colors">
+              View profile &rarr;
+            </p>
+          </div>
+        </a>
+      );
+    })}
+  </div>
+
+  <div class="mt-16 border border-dashed border-cream-300 dark:border-cream-800 rounded p-6 text-center">
+    <p class="font-mono text-xs text-cream-600 dark:text-cream-500 uppercase tracking-wider mb-2">// how the roster grows</p>
+    <p class="font-serif italic text-sm text-cream-800 dark:text-cream-200 max-w-2xl mx-auto">
+      When a recurring task doesn't fit an existing specialist, the recruiter agent runs a multi-turn intake, drafts a charter, and emits a structured action that ships the new agent end-to-end — plugin file, version bump, branch, PR.
+    </p>
+  </div>
+</BaseLayout>

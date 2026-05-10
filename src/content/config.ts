@@ -76,4 +76,25 @@ const buildlog = defineCollection({
   }),
 });
 
-export const collections = { posts, projects, research, buildlog };
+const agents = defineCollection({
+  type: 'content',
+  schema: z.object({
+    id: z.string(),                          // kebab-case, matches plugin file slug
+    display_name: z.string(),
+    client_id: z.string(),                   // Discord application client_id (used by avatar script)
+    role_tagline: z.string(),                // one-line role summary
+    color: z.enum([
+      'red', 'orange', 'yellow', 'green', 'blue',
+      'purple', 'cyan', 'pink', 'white', 'magenta',
+    ]),
+    model: z.string(),
+    tools: z.array(z.string()).default([]),
+    plugin_file_url: z.string().url(),
+    discord_mention: z.string(),             // e.g. "@ux-designer"
+    does_not_own: z.string().optional(),     // sibling-disambiguation phrase
+    operating_principles: z.array(z.string()).default([]),  // 3-5 highlights
+    is_orchestrator: z.boolean().default(false),
+  }),
+});
+
+export const collections = { posts, projects, research, buildlog, agents };
