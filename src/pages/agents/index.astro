@@ -35,7 +35,7 @@ try {
   availableAvatars = new Set();
 }
 ---
-<BaseLayout title="Agents · neural-bridge.dev">
+<BaseLayout title="Agents · neural-bridge.dev" wide>
   <header class="mb-12 pt-4">
     <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-3">// The roster</p>
     <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight mb-4" style="font-variation-settings: 'opsz' 96, 'SOFT' 60;">Agents</h1>
@@ -44,7 +44,7 @@ try {
     </p>
   </header>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
     {agents.map(agent => {
       const accent = COLOR_HEX[agent.data.color] || '#a8a29e';
       const hasAvatar = availableAvatars.has(agent.data.id);

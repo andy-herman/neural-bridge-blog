@@ -6,8 +6,15 @@ import Footer from './Footer.astro';
 export interface Props {
   title: string;
   description?: string;
+  // Layout width. Default narrow (max-w-2xl ≈ 672px) is right for article
+  // reading — long-form prose stays at ~60-75 chars per line. Index pages,
+  // grids, the buildlog, and the homepage cards opt in to wide (max-w-6xl
+  // ≈ 1152px) so they can breathe on desktop instead of feeling boxed in.
+  wide?: boolean;
 }
-const { title, description = 'Build-in-public hub for Neural Bridge and other projects.' } = Astro.props;
+const { title, description = 'Build-in-public hub for Neural Bridge and other projects.', wide = false } = Astro.props;
+
+const widthClass = wide ? 'max-w-6xl' : 'max-w-2xl';
 ---
 <!doctype html>
 <html lang="en" class="h-full">
@@ -40,10 +47,10 @@ const { title, description = 'Build-in-public hub for Neural Bridge and other pr
     <title>{title}</title>
   </head>
   <body class="bg-cream-100 text-cream-900 dark:bg-cream-950 dark:text-cream-100 antialiased min-h-full flex flex-col">
-    <Nav />
-    <main class="flex-1 w-full max-w-2xl mx-auto px-6 py-12 sm:py-16">
+    <Nav wide={wide} />
+    <main class={`flex-1 w-full ${widthClass} mx-auto px-6 py-12 sm:py-16`}>
       <slot />
     </main>
-    <Footer />
+    <Footer wide={wide} />
   </body>
 </html>

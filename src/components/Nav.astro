@@ -1,4 +1,10 @@
 ---
+export interface Props {
+  wide?: boolean;
+}
+const { wide = false } = Astro.props;
+const widthClass = wide ? 'max-w-6xl' : 'max-w-3xl';
+
 const links = [
   { href: '/', label: 'Home' },
   { href: '/posts', label: 'Posts' },
@@ -10,7 +16,7 @@ const links = [
 ];
 ---
 <header class="border-b border-cream-200 dark:border-cream-900 relative">
-  <div class="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between gap-3">
+  <div class={`${widthClass} mx-auto px-6 py-5 flex items-center justify-between gap-3`}>
     <a href="/" class="flex items-center gap-2.5 font-serif text-lg font-semibold tracking-tight shrink-0" style="font-variation-settings: 'opsz' 36, 'SOFT' 30;">
       <svg viewBox="0 0 100 100" class="w-6 h-6 shrink-0" aria-hidden="true">
         <path d="M 28 62 A 22 22 0 0 1 72 62" fill="none" stroke="#c2410c" stroke-width="7" stroke-linecap="round"/>
@@ -58,7 +64,7 @@ const links = [
   </div>
 
   <nav id="mobile-menu" class="hidden md:hidden border-t border-cream-200 dark:border-cream-900 bg-cream-100 dark:bg-cream-950">
-    <ul class="max-w-3xl mx-auto px-6 py-4 space-y-3 text-sm">
+    <ul class={`${widthClass} mx-auto px-6 py-4 space-y-3 text-sm`}>
       {links.map(({ href, label }, i) => (
         <li>
           <a href={href} class="block text-cream-800 hover:text-cream-950 dark:text-cream-200 dark:hover:text-cream-50 transition-colors">

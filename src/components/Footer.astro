@@ -1,8 +1,13 @@
 ---
+export interface Props {
+  wide?: boolean;
+}
+const { wide = false } = Astro.props;
+const widthClass = wide ? 'max-w-6xl' : 'max-w-2xl';
 const year = new Date().getFullYear();
 ---
 <footer class="border-t border-cream-200 dark:border-cream-900 mt-16 py-10">
-  <div class="max-w-2xl mx-auto px-6 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-3 text-sm text-cream-800 dark:text-cream-300">
+  <div class={`${widthClass} mx-auto px-6 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-3 text-sm text-cream-800 dark:text-cream-300`}>
     <p class="font-mono text-xs">&copy; {year}, ANDY HERMAN</p>
     <p class="font-mono text-xs">
       <a href="/rss.xml" class="hover:text-rust-500 transition-colors">RSS</a>

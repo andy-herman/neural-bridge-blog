@@ -5,7 +5,7 @@ import BaseLayout from '../../components/BaseLayout.astro';
 const projects = (await getCollection('projects'))
   .sort((a, b) => b.data.started.valueOf() - a.data.started.valueOf());
 ---
-<BaseLayout title="Projects · neural-bridge.dev">
+<BaseLayout title="Projects · neural-bridge.dev" wide>
   <header class="mb-12 pt-4">
     <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-3">// In flight</p>
     <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight mb-4" style="font-variation-settings: 'opsz' 96, 'SOFT' 60;">Projects</h1>
