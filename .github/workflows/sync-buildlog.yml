@@ -1,26 +1,63 @@
-# V2 — sync the build log from project repos.
+# Sync the buildlog feed from upstream merged PRs.
 #
-# Pulls latest STATUS.md and recent commit history from neural-bridge
-# (and future projects) and commits the synced data to this repo so
-# /buildlog can render it as a chronological feed.
+# Runs daily (and on demand). Calls .github/scripts/sync-buildlog.mjs which
+# fetches merged PRs from andy-herman/neural-bridge and andy-herman/neural-bridge-blog,
+# generates buildlog entries for ones not already represented, and writes them
+# to src/content/buildlog/. If new entries land, the workflow commits and pushes
+# them to main with [skip-tweet] in the message (the tweet workflow ignores
+# anything with that marker).
+#
+# Hand-curated entries are preserved: the script never overwrites existing
+# files, and it tracks "already represented" by exact PR URL match (via the
+# `pr_url` frontmatter field on auto entries, plus best-effort regex over
+# the links[] block on hand-curated entries).
+#
+# Cross-repo read access:
+#   `gh pr list --repo andy-herman/neural-bridge` works against the workflow's
+#   GITHUB_TOKEN as long as the user (andy-herman) is the owner of both repos
+#   and the workflow runs in a public repo. If the source repos go private or
+#   ownership changes, we'll need a PAT in NB_BUILDLOG_SYNC_TOKEN secret.
 
 name: Sync build log
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # daily at 06:00 UTC
-  workflow_dispatch:        # manual trigger
+    - cron: '0 14 * * *'   # daily at 14:00 UTC = 7am PT (winter) / 6am PT (summer)
+  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # TODO V2: implement the sync.
-      # 1. Fetch STATUS.md from andy-herman/neural-bridge
-      # 2. Fetch the last 50 commits via the GitHub API
-      # 3. Transform into src/content/buildlog/*.json or .mdx
-      # 4. Commit changes back to this repo (uses workflow's GITHUB_TOKEN)
-      - name: Placeholder
-        run: echo "Build log sync — wired in V2"
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sync new merged PRs into buildlog
+        id: sync
+        env:
+          GH_TOKEN: ${{ secrets.NB_BUILDLOG_SYNC_TOKEN || github.token }}
+        run: node .github/scripts/sync-buildlog.mjs
+
+      - name: Commit and push if anything new
+        if: steps.sync.outputs.count != '0' && steps.sync.outputs.count != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/content/buildlog/
+          if git diff --cached --quiet; then
+            echo "No staged changes; nothing to commit."
+            exit 0
+          fi
+          COUNT="${{ steps.sync.outputs.count }}"
+          NOUN="entries"
+          if [ "$COUNT" = "1" ]; then NOUN="entry"; fi
+          git commit -m "Auto-sync buildlog: $COUNT new $NOUN [skip-tweet]"
+          git push

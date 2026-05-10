@@ -73,6 +73,10 @@ const buildlog = defineCollection({
       url: z.string(),
     })).default([]),
     tags: z.array(z.string()).default([]),
+    // Optional PR URL set by the auto-sync workflow for idempotency. Used as
+    // a "this PR is already represented" marker so re-runs skip duplicates.
+    // Hand-curated entries leave this unset.
+    pr_url: z.string().url().optional(),
   }),
 });
 
