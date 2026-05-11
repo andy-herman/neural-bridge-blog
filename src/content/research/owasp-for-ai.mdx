@@ -46,7 +46,7 @@ What about the model's output? Two different worries here. **LLM05: Improper Out
 
 Then there's the pair that determines blast radius. **LLM06: Excessive Agency** is what turns a small compromise into a big one. Give an agent broad tool access, broad permissions, or broad autonomy, and a successful injection at LLM01 doesn't just produce a bad answer, it sends an email, deletes a file, or moves money. **LLM10: Unbounded Consumption** is the same pattern aimed at your wallet: prompt-driven cost attacks, runaway token use, infinite tool loops, denial-of-service via your own quota. Together they ask the same question from different angles: *what can the adversary make this thing do once it's been compromised?*
 
-Finally, the question of where it all came from. **LLM03: Supply Chain** got promoted to #3 because it's where many of the other risks originate. The base model, the embeddings, the third-party plugins, the open-source tools the agent calls — every dependency is attack surface, and "we trusted the upstream" is a common root cause when an LLM02 or LLM04 issue hits production.
+Finally, the question of where it all came from. **LLM03: Supply Chain** got promoted to #3 because it's where many of the other risks originate. The base model, the embeddings, the third-party plugins, the open-source tools the agent calls, every dependency is attack surface, and "we trusted the upstream" is a common root cause when an LLM02 or LLM04 issue hits production.
 
 That's the whole list, and the clustering is the actual mental model: input attack (01) → source pollution (04, 08) → disclosure (02, 07) → output trust (05, 09) → amplifier (06, 10) → pedigree (03). If you internalize nothing else, that walk will get you 80% of the way to thinking sensibly about LLM security.
 
@@ -54,7 +54,7 @@ That's the whole list, and the clustering is the actual mental model: input atta
 
 In December 2024, OWASP launched the [Agentic AI Security Initiative](https://genai.owasp.org/initiatives/agentic-security-initiative/) to address what was clearly a different shape of problem: autonomous AI systems running multi-step workflows, holding persistent memory, and reaching out to tools on their own. The result, the [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/), is a separate list and not a subset of the LLM list.
 
-The reason it had to be separate is that agency changes the threat model. Once an LLM has tools, the classic confused-deputy problem reappears in a new form: indirect injection convinces the agent to invoke a sensitive capability the user never asked for, and the agent's own permissions are what cause the damage. Once it has long-term memory, you get persistence: a single bad day's input becomes a permanent belief, which is the entire premise of memory poisoning. Once it can plan multi-step actions, an attacker can subvert its goal without ever touching the system prompt — just nudge intermediate decisions until the agent walks itself somewhere bad. Multi-agent setups make all of this worse, because contamination in one agent leaks through shared memory or message-passing to others. And resource exhaustion stops being a token-count problem and becomes runaway delegation: agents calling agents calling agents, no obvious circuit breaker.
+The reason it had to be separate is that agency changes the threat model. Once an LLM has tools, the classic confused-deputy problem reappears in a new form: indirect injection convinces the agent to invoke a sensitive capability the user never asked for, and the agent's own permissions are what cause the damage. Once it has long-term memory, you get persistence: a single bad day's input becomes a permanent belief, which is the entire premise of memory poisoning. Once it can plan multi-step actions, an attacker can subvert its goal without ever touching the system prompt, just nudge intermediate decisions until the agent walks itself somewhere bad. Multi-agent setups make all of this worse, because contamination in one agent leaks through shared memory or message-passing to others. And resource exhaustion stops being a token-count problem and becomes runaway delegation: agents calling agents calling agents, no obvious circuit breaker.
 
 For build-in-public people like me building [Neural Bridge](https://neural-bridge.dev), the agentic list is the more relevant one. Most of my Layer 4 and Layer 5 threats in the Neural Bridge security architecture map directly into it.
 
@@ -64,17 +64,17 @@ There are three increasingly serious ways to use this material, and most teams w
 
 The lightest use is just **vocabulary**. Once "LLM05" means "improper output handling" to everyone in the room, conversations get noticeably faster and more honest. Half the value of the Top 10 is replacing fuzzy phrases like "the AI does sketchy things sometimes" with shared shorthand the whole team understands. Don't underestimate that.
 
-The next step up is **self-assessment**. Walk each item against your system and answer two questions: are we exposed, and if so, what stops it? The answers will be uneven — most early-stage systems have strong controls in two or three categories and effectively nothing in the rest. That uneven answer *is* the value of the exercise. A personal project will burn about thirty minutes on this; a small SaaS runs half a day; an enterprise system takes a sprint and turns up things people had been quietly worrying about. A workable template looks like this:
+The next step up is **self-assessment**. Walk each item against your system and answer two questions: are we exposed, and if so, what stops it? The answers will be uneven, most early-stage systems have strong controls in two or three categories and effectively nothing in the rest. That uneven answer *is* the value of the exercise. A personal project will burn about thirty minutes on this; a small SaaS runs half a day; an enterprise system takes a sprint and turns up things people had been quietly worrying about. A workable template looks like this:
 
 ```
-LLM01 — Prompt Injection
+LLM01. Prompt Injection
   Exposure: [yes/no/partial]
   Vector(s): [where adversarial input could enter]
   Current control: [what stops it]
   Residual risk: [what remains; rate L/M/H]
 ```
 
-Run it down the list, write the answers down, and revisit quarterly. The writing down part matters more than it sounds — it's how you notice that the residual-risk column is identical to last quarter's, and someone needs to actually do the work.
+Run it down the list, write the answers down, and revisit quarterly. The writing down part matters more than it sounds, it's how you notice that the residual-risk column is identical to last quarter's, and someone needs to actually do the work.
 
 The heaviest use is **regulatory backstop**, and this is where OWASP earns its keep in 2026. A growing number of laws now reference "recognized" AI risk frameworks as the basis of reasonable care. The [Colorado AI Act](https://leg.colorado.gov/bill_files/47770/download) explicitly accepts the [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework), [ISO/IEC 42001](https://www.iso.org/standard/81230.html), or other internationally recognized frameworks as an affirmative defense, and OWASP fits the shape of "framework an auditor will recognize" even though it isn't a management system in the ISO sense. If you're a security team responding to "demonstrate your AI risk program," you almost certainly want OWASP cited somewhere in the answer. The companion piece, AI Security Regulation in 2026, walks the regulatory side in detail.
 
@@ -102,15 +102,15 @@ If you're going to focus your reading time, prioritize the LLM Top 10 → the Ag
 
 ## Further reading
 
-- [OWASP Top 10 for LLM Applications 2025](https://genai.owasp.org/llm-top-10/) — the canonical list
-- [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) — the agent-specific list
-- [OWASP GenAI Security Project home](https://genai.owasp.org/) — the parent project
-- [OWASP AI Exchange](https://owaspai.org/docs/ai_security_overview/) — broader AI security overview, more technical depth
-- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework) — the parallel framework most US compliance work cites
-- [ISO/IEC 42001](https://www.iso.org/standard/81230.html) — the international AI management system standard
+- [OWASP Top 10 for LLM Applications 2025](https://genai.owasp.org/llm-top-10/): the canonical list
+- [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/): the agent-specific list
+- [OWASP GenAI Security Project home](https://genai.owasp.org/): the parent project
+- [OWASP AI Exchange](https://owaspai.org/docs/ai_security_overview/): broader AI security overview, more technical depth
+- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework): the parallel framework most US compliance work cites
+- [ISO/IEC 42001](https://www.iso.org/standard/81230.html): the international AI management system standard
 
 ## See also
 
-- 01 - Memory Poisoning in Personal Agentic AI Substrates — companion paper digging into LLM01 / LLM04 / LLM08
-- 01 - AI Security Regulation in 2026 — companion piece on the regulatory side
-- Security Architecture — Neural Bridge threat model, mapped to agentic risks
+- 01 - Memory Poisoning in Personal Agentic AI Substrates, companion paper digging into LLM01 / LLM04 / LLM08
+- 01 - AI Security Regulation in 2026, companion piece on the regulatory side
+- Security Architecture: Neural Bridge threat model, mapped to agentic risks

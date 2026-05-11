@@ -9,4 +9,4 @@ links:
 tags: [build-in-public, ai-agents]
 ---
 
-The blog goes live with the framing post. Neural was the first attempt at a substrate. Synapse refined the architecture. Argus turned the lessons into a regulatory-compliance copilot at work. Each one taught me something I needed for the next. The substrate didn't compound — until now.
+The blog goes live with the framing post. Neural was the first attempt at a substrate. Synapse refined the architecture. Argus turned the lessons into a regulatory-compliance copilot at work. Each one taught me something I needed for the next. The substrate didn't compound. Until now.

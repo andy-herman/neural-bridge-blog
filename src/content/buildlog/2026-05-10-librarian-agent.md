@@ -9,4 +9,4 @@ links:
 tags: [agents, vault, librarian]
 ---
 
-The 11th specialist. The librarian keeps the Obsidian vault organized: maintains an index, runs audits for orphan notes and dead links, and proposes restructures when sections get crowded. Closes a friction I'd flagged in the Phase B core notes — the vault was filling with SOPs, drafts, and journal entries with no agent to keep the shape coherent. Now there is.
+The 11th specialist. The librarian keeps the Obsidian vault organized: maintains an index, runs audits for orphan notes and dead links, and proposes restructures when sections get crowded. Closes a friction I'd flagged in the Phase B core notes, the vault was filling with SOPs, drafts, and journal entries with no agent to keep the shape coherent. Now there is.

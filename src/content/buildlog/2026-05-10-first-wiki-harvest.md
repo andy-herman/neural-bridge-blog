@@ -9,4 +9,4 @@ links:
 tags: [compile, wiki, filing-gate]
 ---
 
-The compile pipeline produced its first real output. Seven concept articles landed in `knowledge/concepts/` with rich bodies, twenty-one connection files surfaced shared-session relationships, eight candidates hit the quarantine path with reasons. The substrate is no longer a scaffold; it's a wiki that's growing. Every concept carries provenance frontmatter — which session it came from, transcript sha256, source log — so anything later can be traced back to the moment it was decided.
+The compile pipeline produced its first real output. Seven concept articles landed in `knowledge/concepts/` with rich bodies, twenty-one connection files surfaced shared-session relationships, eight candidates hit the quarantine path with reasons. The substrate is no longer a scaffold; it's a wiki that's growing. Every concept carries provenance frontmatter, which session it came from, transcript sha256, source log, so anything later can be traced back to the moment it was decided.

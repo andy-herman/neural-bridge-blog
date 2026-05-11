@@ -9,4 +9,4 @@ links:
 tags: [compile, wiki, filing-gate]
 ---
 
-A PROMOTE verdict now produces a real concept article instead of a slug-and-summary stub. Separate `claude -p` call after the gate decides, structured prose: intro, key points, how-we-use-it, open questions, related-concept wiki-links. Re-promoting an existing concept archives the prior version to `concepts/.history/<slug>/<timestamp>.md` first — audit trail the lint pass needs. Live runs append to `knowledge/log.md` and add wiki-links to `knowledge/index.md`. 47 tests passing.
+A PROMOTE verdict now produces a real concept article instead of a slug-and-summary stub. Separate `claude -p` call after the gate decides, structured prose: intro, key points, how-we-use-it, open questions, related-concept wiki-links. Re-promoting an existing concept archives the prior version to `concepts/.history/<slug>/<timestamp>.md` first, audit trail the lint pass needs. Live runs append to `knowledge/log.md` and add wiki-links to `knowledge/index.md`. 47 tests passing.

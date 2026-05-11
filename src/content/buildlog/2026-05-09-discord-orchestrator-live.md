@@ -11,4 +11,4 @@ links:
 tags: [discord, orchestrator, multi-agent]
 ---
 
-Nine bot identities, one daemon, one asyncio loop. Mention any agent in `#neural-bridge` and the right specialist responds. Agents can emit a structured `actions` JSON block to file issues, comment, label, close — no Bash, no shell, audit trail per call. Cross-agent handoff via @-mention propagation, capped at five turns per Andy-initiated thread to prevent runaway chains.
+Nine bot identities, one daemon, one asyncio loop. Mention any agent in `#neural-bridge` and the right specialist responds. Agents can emit a structured `actions` JSON block to file issues, comment, label, close, no Bash, no shell, audit trail per call. Cross-agent handoff via @-mention propagation, capped at five turns per Andy-initiated thread to prevent runaway chains.

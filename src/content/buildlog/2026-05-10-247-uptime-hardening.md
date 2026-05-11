@@ -13,4 +13,4 @@ links:
 tags: [launchd, daemon, hardening]
 ---
 
-Three reliability moves on the Discord daemon. `caffeinate -s -i` wraps the launchd entry so the Mac never silently sleeps the daemon's process tree even with `pmset` already configured. An auto-reload watcher runs every two minutes: `git pull main`, and if anything new landed, the daemon restarts itself. A rotating-file logger caps individual log files at 10 MB with seven backups, ceiling around 70 MB total — no more unbounded log growth on the Mac Mini.
+Three reliability moves on the Discord daemon. `caffeinate -s -i` wraps the launchd entry so the Mac never silently sleeps the daemon's process tree even with `pmset` already configured. An auto-reload watcher runs every two minutes: `git pull main`, and if anything new landed, the daemon restarts itself. A rotating-file logger caps individual log files at 10 MB with seven backups, ceiling around 70 MB total, no more unbounded log growth on the Mac Mini.
