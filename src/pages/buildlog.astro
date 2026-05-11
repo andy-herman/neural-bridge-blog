@@ -31,7 +31,7 @@ const PROJECT_LABELS: Record<string, string> = {
   'cross-cutting': 'cross-cutting',
 };
 
-const allEntries = (await getCollection('buildlog'))
+const allEntries = (await getCollection('buildlog', ({ id }) => !id.startsWith('ko/')))
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
 const latestEntryId = allEntries[0]?.id;

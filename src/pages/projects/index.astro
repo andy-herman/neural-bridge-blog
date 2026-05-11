@@ -2,7 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../components/BaseLayout.astro';
 
-const projects = (await getCollection('projects'))
+const projects = (await getCollection('projects', ({ id }) => !id.startsWith('ko/')))
   .sort((a, b) => b.data.started.valueOf() - a.data.started.valueOf());
 ---
 <BaseLayout title="Projects · neural-bridge.dev" wide>

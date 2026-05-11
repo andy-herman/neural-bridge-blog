@@ -17,7 +17,7 @@ const TOPIC_LABELS: Record<string, string> = {
   'compliance-risk': 'Compliance & Risk',
 };
 
-const papers = (await getCollection('research', ({ data }) => !data.draft))
+const papers = (await getCollection('research', ({ data, id }) => !data.draft && !id.startsWith('ko/')))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
 const byTopic = TOPIC_ORDER

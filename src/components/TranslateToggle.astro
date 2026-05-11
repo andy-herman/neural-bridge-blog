@@ -1,0 +1,129 @@
+---
+// Per-article translation toggle. Sits in the article header.
+//
+// Behavior:
+//   - Renders only when a Korean translation exists for this article (hasKorean=true).
+//   - On click, swaps visibility between elements marked [data-lang="en"] and
+//     [data-lang="ko"] on the page. No URL change, no navigation.
+//   - Persists choice in localStorage under "nb-translation-lang". When the
+//     reader lands on a new article that also has Korean, the stored preference
+//     is auto-applied at load.
+//   - English is the canonical URL; Korean is rendered into the same page at
+//     build time (hidden by default). Only one URL per article.
+//
+// Voice rule: no em dashes anywhere.
+
+export interface Props {
+  hasKorean: boolean;
+}
+const { hasKorean } = Astro.props;
+---
+{hasKorean && (
+  <div
+    class="translate-toggle inline-flex items-center gap-1.5 font-mono text-xs"
+    role="group"
+    aria-label="Translation"
+    data-translate-toggle
+  >
+    <span class="opacity-60 mr-1" aria-hidden="true">//</span>
+    <button
+      type="button"
+      data-translate-target="en"
+      class="px-2 py-0.5 rounded border border-transparent text-rust-500 font-medium"
+      aria-pressed="true"
+    >EN</button>
+    <span class="opacity-40" aria-hidden="true">|</span>
+    <button
+      type="button"
+      data-translate-target="ko"
+      class="px-2 py-0.5 rounded border border-transparent text-cream-700 dark:text-cream-400 hover:text-rust-500 transition-colors"
+      aria-pressed="false"
+    >한국어</button>
+  </div>
+)}
+
+<script is:inline>
+  (function () {
+    const PREF_KEY = 'nb-translation-lang';
+    const ACTIVE_CLASS = ['text-rust-500', 'font-medium'];
+    const INACTIVE_CLASS = ['text-cream-700', 'dark:text-cream-400'];
+
+    function setActive(btn, isActive) {
+      if (!btn) return;
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      if (isActive) {
+        ACTIVE_CLASS.forEach((c) => btn.classList.add(c));
+        INACTIVE_CLASS.forEach((c) => btn.classList.remove(c));
+      } else {
+        ACTIVE_CLASS.forEach((c) => btn.classList.remove(c));
+        INACTIVE_CLASS.forEach((c) => btn.classList.add(c));
+      }
+    }
+
+    function apply(lang) {
+      // Swap visibility of all [data-lang] elements on the page.
+      const enEls = document.querySelectorAll('[data-lang="en"]');
+      const koEls = document.querySelectorAll('[data-lang="ko"]');
+      if (!enEls.length || !koEls.length) return false;
+      enEls.forEach((el) => {
+        el.hidden = lang !== 'en';
+        if (lang !== 'en') el.setAttribute('aria-hidden', 'true');
+        else el.removeAttribute('aria-hidden');
+      });
+      koEls.forEach((el) => {
+        el.hidden = lang !== 'ko';
+        if (lang !== 'ko') el.setAttribute('aria-hidden', 'true');
+        else el.removeAttribute('aria-hidden');
+      });
+      // Update button visual state on every toggle present in the page.
+      document.querySelectorAll('[data-translate-toggle]').forEach((wrap) => {
+        const enBtn = wrap.querySelector('[data-translate-target="en"]');
+        const koBtn = wrap.querySelector('[data-translate-target="ko"]');
+        setActive(enBtn, lang === 'en');
+        setActive(koBtn, lang === 'ko');
+      });
+      // Mirror the chosen lang onto <html> for any CSS that wants to react.
+      document.documentElement.setAttribute('data-translation-lang', lang);
+      return true;
+    }
+
+    // Apply persisted preference, but only if this page actually has Korean
+    // content present. Otherwise leave English active (and don't show the toggle —
+    // the server already chose not to render it).
+    function init() {
+      const hasKo = document.querySelectorAll('[data-lang="ko"]').length > 0;
+      if (!hasKo) return;
+      let pref = 'en';
+      try {
+        const stored = localStorage.getItem(PREF_KEY);
+        if (stored === 'en' || stored === 'ko') pref = stored;
+      } catch (_) {
+        // localStorage may throw in private mode; ignore.
+      }
+      apply(pref);
+    }
+
+    // Wire toggle clicks. Delegated so all toggles on the page (header + any
+    // future inline ones) share behavior.
+    function wire() {
+      document.querySelectorAll('[data-translate-toggle]').forEach((wrap) => {
+        wrap.addEventListener('click', (ev) => {
+          const target = ev.target.closest('[data-translate-target]');
+          if (!target) return;
+          const lang = target.getAttribute('data-translate-target');
+          if (lang !== 'en' && lang !== 'ko') return;
+          if (apply(lang)) {
+            try { localStorage.setItem(PREF_KEY, lang); } catch (_) {}
+          }
+        });
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => { wire(); init(); });
+    } else {
+      wire();
+      init();
+    }
+  })();
+</script>

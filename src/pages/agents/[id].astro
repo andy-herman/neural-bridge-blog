@@ -1,11 +1,14 @@
 ---
 import { getCollection, getEntry, render } from 'astro:content';
 import BaseLayout from '../../components/BaseLayout.astro';
+import TranslateToggle from '../../components/TranslateToggle.astro';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
 export async function getStaticPaths() {
-  const agents = await getCollection('agents');
+  // Only emit routes for English agents; Korean sidecars under `ko/<id>` are
+  // rendered inline into the same URL via the TranslateToggle pattern.
+  const agents = await getCollection('agents', ({ id }) => !id.startsWith('ko/'));
   return agents.map(agent => ({
     params: { id: agent.data.id },
     props: { agent },
@@ -14,6 +17,15 @@ export async function getStaticPaths() {
 
 const { agent } = Astro.props;
 const { Content } = await render(agent);
+
+// Look for a Korean sidecar. The Korean file's collection id will be `ko/<slug>`
+// where <slug> matches the English agent's filename. The frontmatter `id`
+// fields are shared (e.g. id: luna for both), so we resolve via collection id.
+let koAgent = null;
+try {
+  koAgent = await getEntry('agents', `ko/${agent.slug}`);
+} catch { /* no Korean version yet */ }
+const KoContent = koAgent ? (await render(koAgent)).Content : null;
 
 // Color → hex (mirrors index page).
 const COLOR_HEX: Record<string, string> = {
@@ -42,10 +54,13 @@ try {
 ---
 <BaseLayout title={`${agent.data.display_name} · neural-bridge.dev`} wide>
   <article class="my-6">
-    <!-- Back link -->
-    <a href="/agents" class="inline-block mb-6 font-mono text-xs uppercase tracking-wider text-cream-700 dark:text-cream-300 hover:text-rust-500 transition-colors">
-      &larr; All agents
-    </a>
+    <!-- Back link + toggle row -->
+    <div class="flex items-baseline justify-between gap-3 mb-6 flex-wrap">
+      <a href="/agents" class="inline-block font-mono text-xs uppercase tracking-wider text-cream-700 dark:text-cream-300 hover:text-rust-500 transition-colors">
+        &larr; All agents
+      </a>
+      {KoContent && <TranslateToggle hasKorean={true} />}
+    </div>
 
     <!-- The character card: rounded outer frame with subtle border -->
     <div class="border border-cream-200 dark:border-cream-900 rounded-xl overflow-hidden bg-cream-50 dark:bg-cream-950">
@@ -53,7 +68,7 @@ try {
       <div class="h-1.5" style={`background-color: ${accent};`} aria-hidden="true"></div>
 
       <div class="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-0">
-        <!-- LEFT: visual column -->
+        <!-- LEFT: visual column (language-independent) -->
         <aside class="p-6 sm:p-8 border-b md:border-b-0 md:border-r border-cream-200 dark:border-cream-900">
           <p class="font-mono text-[11px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-4">
             // System: agent collective
@@ -98,95 +113,185 @@ try {
           </div>
         </aside>
 
-        <!-- RIGHT: text column -->
+        <!-- RIGHT: text column. Two bilingual variants stacked, toggled. -->
         <div class="p-6 sm:p-8">
-          <p class="font-mono text-xs uppercase tracking-wider mb-2" style={`color: ${accent};`}>
-            // Character card
-          </p>
-          <h1
-            class="font-serif text-3xl sm:text-4xl font-semibold tracking-tight mb-8 leading-tight"
-            style={`color: ${accent}; font-variation-settings: 'opsz' 96, 'SOFT' 60;`}
-          >
-            {agent.data.display_name}
-          </h1>
-
-          <!-- Section 1: Role & Purpose -->
-          <section class="mb-8 border-t border-cream-200 dark:border-cream-900 pt-5">
-            <div class="flex items-center gap-2.5 mb-3">
-              <svg class="w-4 h-4 text-rust-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-              </svg>
-              <h2 class="font-mono text-xs uppercase tracking-wider text-rust-500">Role &amp; Purpose</h2>
-            </div>
-            <p class="font-serif italic text-base sm:text-lg text-cream-800 dark:text-cream-100 leading-snug mb-3">
-              {agent.data.role_tagline}
+          <!-- ENGLISH variant -->
+          <div data-lang="en">
+            <p class="font-mono text-xs uppercase tracking-wider mb-2" style={`color: ${accent};`}>
+              // Character card
             </p>
-            <div class="prose prose-cream dark:prose-invert prose-sm max-w-none">
-              <Content />
-            </div>
-          </section>
+            <h1
+              class="font-serif text-3xl sm:text-4xl font-semibold tracking-tight mb-8 leading-tight"
+              style={`color: ${accent}; font-variation-settings: 'opsz' 96, 'SOFT' 60;`}
+            >
+              {agent.data.display_name}
+            </h1>
 
-          <!-- Section 2: Operating Principles -->
-          {agent.data.operating_principles.length > 0 && (
             <section class="mb-8 border-t border-cream-200 dark:border-cream-900 pt-5">
               <div class="flex items-center gap-2.5 mb-3">
                 <svg class="w-4 h-4 text-rust-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                 </svg>
-                <h2 class="font-mono text-xs uppercase tracking-wider text-rust-500">Operating Principles</h2>
+                <h2 class="font-mono text-xs uppercase tracking-wider text-rust-500">Role &amp; Purpose</h2>
               </div>
-              <ol class="space-y-2.5 list-none">
-                {agent.data.operating_principles.map((principle, i) => (
-                  <li class="flex gap-3">
-                    <span class="font-mono text-xs text-cream-500 dark:text-cream-600 mt-1 shrink-0">0{i + 1}</span>
-                    <span class="text-cream-800 dark:text-cream-100 leading-relaxed">{principle}</span>
-                  </li>
-                ))}
-              </ol>
+              <p class="font-serif italic text-base sm:text-lg text-cream-800 dark:text-cream-100 leading-snug mb-3">
+                {agent.data.role_tagline}
+              </p>
+              <div class="prose prose-cream dark:prose-invert prose-sm max-w-none">
+                <Content />
+              </div>
             </section>
-          )}
 
-          <!-- Section 3: Scope & Tools -->
-          <section class="border-t border-cream-200 dark:border-cream-900 pt-5">
-            <div class="flex items-center gap-2.5 mb-3">
-              <svg class="w-4 h-4 text-rust-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              </svg>
-              <h2 class="font-mono text-xs uppercase tracking-wider text-rust-500">Scope &amp; Tools</h2>
-            </div>
-
-            {agent.data.does_not_own && (
-              <div class="mb-4">
-                <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-1">// Does NOT own</p>
-                <p class="text-cream-800 dark:text-cream-100 leading-relaxed text-sm">{agent.data.does_not_own}</p>
-              </div>
-            )}
-
-            {agent.data.tools.length > 0 && (
-              <div class="mb-4">
-                <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-2">// Tools</p>
-                <ul class="flex flex-wrap gap-1.5">
-                  {agent.data.tools.map(tool => (
-                    <li>
-                      <span class="inline-block font-mono text-[11px] px-2 py-0.5 rounded border border-cream-300 dark:border-cream-700 text-cream-800 dark:text-cream-200">{tool}</span>
+            {agent.data.operating_principles.length > 0 && (
+              <section class="mb-8 border-t border-cream-200 dark:border-cream-900 pt-5">
+                <div class="flex items-center gap-2.5 mb-3">
+                  <svg class="w-4 h-4 text-rust-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  </svg>
+                  <h2 class="font-mono text-xs uppercase tracking-wider text-rust-500">Operating Principles</h2>
+                </div>
+                <ol class="space-y-2.5 list-none">
+                  {agent.data.operating_principles.map((principle, i) => (
+                    <li class="flex gap-3">
+                      <span class="font-mono text-xs text-cream-500 dark:text-cream-600 mt-1 shrink-0">0{i + 1}</span>
+                      <span class="text-cream-800 dark:text-cream-100 leading-relaxed">{principle}</span>
                     </li>
                   ))}
-                </ul>
-              </div>
+                </ol>
+              </section>
             )}
 
-            <div class="pt-2">
-              <a
-                href={agent.data.plugin_file_url}
-                target="_blank"
-                rel="noopener"
-                class="inline-block font-mono text-xs uppercase tracking-wider text-rust-600 dark:text-rust-400 hover:text-rust-700 dark:hover:text-rust-300 underline underline-offset-4 decoration-1"
+            <section class="border-t border-cream-200 dark:border-cream-900 pt-5">
+              <div class="flex items-center gap-2.5 mb-3">
+                <svg class="w-4 h-4 text-rust-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <h2 class="font-mono text-xs uppercase tracking-wider text-rust-500">Scope &amp; Tools</h2>
+              </div>
+
+              {agent.data.does_not_own && (
+                <div class="mb-4">
+                  <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-1">// Does NOT own</p>
+                  <p class="text-cream-800 dark:text-cream-100 leading-relaxed text-sm">{agent.data.does_not_own}</p>
+                </div>
+              )}
+
+              {agent.data.tools.length > 0 && (
+                <div class="mb-4">
+                  <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-2">// Tools</p>
+                  <ul class="flex flex-wrap gap-1.5">
+                    {agent.data.tools.map(tool => (
+                      <li>
+                        <span class="inline-block font-mono text-[11px] px-2 py-0.5 rounded border border-cream-300 dark:border-cream-700 text-cream-800 dark:text-cream-200">{tool}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div class="pt-2">
+                <a
+                  href={agent.data.plugin_file_url}
+                  target="_blank"
+                  rel="noopener"
+                  class="inline-block font-mono text-xs uppercase tracking-wider text-rust-600 dark:text-rust-400 hover:text-rust-700 dark:hover:text-rust-300 underline underline-offset-4 decoration-1"
+                >
+                  View canonical charter on GitHub &rarr;
+                </a>
+              </div>
+            </section>
+          </div>
+
+          <!-- KOREAN variant (only rendered if Korean sidecar exists) -->
+          {koAgent && (
+            <div data-lang="ko" hidden aria-hidden="true">
+              <p class="font-mono text-xs uppercase tracking-wider mb-2" style={`color: ${accent};`}>
+                // 캐릭터 카드
+              </p>
+              <h1
+                class="font-serif text-3xl sm:text-4xl font-semibold tracking-tight mb-8 leading-tight"
+                style={`color: ${accent}; font-variation-settings: 'opsz' 96, 'SOFT' 60;`}
               >
-                View canonical charter on GitHub &rarr;
-              </a>
+                {koAgent.data.display_name}
+              </h1>
+
+              <section class="mb-8 border-t border-cream-200 dark:border-cream-900 pt-5">
+                <div class="flex items-center gap-2.5 mb-3">
+                  <svg class="w-4 h-4 text-rust-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                  </svg>
+                  <h2 class="font-mono text-xs uppercase tracking-wider text-rust-500">역할과 목적</h2>
+                </div>
+                <p class="font-serif italic text-base sm:text-lg text-cream-800 dark:text-cream-100 leading-snug mb-3">
+                  {koAgent.data.role_tagline}
+                </p>
+                <div class="prose prose-cream dark:prose-invert prose-sm max-w-none">
+                  <KoContent />
+                </div>
+              </section>
+
+              {koAgent.data.operating_principles.length > 0 && (
+                <section class="mb-8 border-t border-cream-200 dark:border-cream-900 pt-5">
+                  <div class="flex items-center gap-2.5 mb-3">
+                    <svg class="w-4 h-4 text-rust-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    <h2 class="font-mono text-xs uppercase tracking-wider text-rust-500">운영 원칙</h2>
+                  </div>
+                  <ol class="space-y-2.5 list-none">
+                    {koAgent.data.operating_principles.map((principle, i) => (
+                      <li class="flex gap-3">
+                        <span class="font-mono text-xs text-cream-500 dark:text-cream-600 mt-1 shrink-0">0{i + 1}</span>
+                        <span class="text-cream-800 dark:text-cream-100 leading-relaxed">{principle}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              )}
+
+              <section class="border-t border-cream-200 dark:border-cream-900 pt-5">
+                <div class="flex items-center gap-2.5 mb-3">
+                  <svg class="w-4 h-4 text-rust-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  </svg>
+                  <h2 class="font-mono text-xs uppercase tracking-wider text-rust-500">범위와 도구</h2>
+                </div>
+
+                {koAgent.data.does_not_own && (
+                  <div class="mb-4">
+                    <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-1">// 담당하지 않는 영역</p>
+                    <p class="text-cream-800 dark:text-cream-100 leading-relaxed text-sm">{koAgent.data.does_not_own}</p>
+                  </div>
+                )}
+
+                {koAgent.data.tools.length > 0 && (
+                  <div class="mb-4">
+                    <p class="font-mono text-[10px] uppercase tracking-wider text-cream-600 dark:text-cream-400 mb-2">// 도구</p>
+                    <ul class="flex flex-wrap gap-1.5">
+                      {koAgent.data.tools.map(tool => (
+                        <li>
+                          <span class="inline-block font-mono text-[11px] px-2 py-0.5 rounded border border-cream-300 dark:border-cream-700 text-cream-800 dark:text-cream-200">{tool}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div class="pt-2">
+                  <a
+                    href={koAgent.data.plugin_file_url}
+                    target="_blank"
+                    rel="noopener"
+                    class="inline-block font-mono text-xs uppercase tracking-wider text-rust-600 dark:text-rust-400 hover:text-rust-700 dark:hover:text-rust-300 underline underline-offset-4 decoration-1"
+                  >
+                    GitHub에서 정식 차터 보기 &rarr;
+                  </a>
+                </div>
+              </section>
             </div>
-          </section>
+          )}
         </div>
       </div>
     </div>
