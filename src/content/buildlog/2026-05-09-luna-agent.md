@@ -9,4 +9,4 @@ links:
 tags: [agents, mcp, calendar, gmail]
 ---
 
-The 10th specialist. Luna handles calendar and email triage — different scope than the build-side agents. Wired into Discord with MCP servers for Google Calendar and Gmail so she can read upcoming meetings, surface conflicts, draft replies, and propose schedule moves. The first agent whose work isn't strictly about Neural Bridge itself; the substrate is starting to get used.
+The 10th specialist. Luna handles calendar and email triage, different scope than the build-side agents. Wired into Discord with MCP servers for Google Calendar and Gmail so she can read upcoming meetings, surface conflicts, draft replies, and propose schedule moves. The first agent whose work isn't strictly about Neural Bridge itself; the substrate is starting to get used.

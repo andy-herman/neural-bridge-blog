@@ -9,4 +9,4 @@ links:
 tags: [recruiter, automation, multi-agent]
 ---
 
-The recruiter agent can now provision new specialist agents end-to-end. Emit a structured `create_agent` action and the daemon writes the plugin file, updates `KNOWN_AGENTS` in two places, bumps the plugin version, branches, commits, pushes, and opens a PR. Manual Discord-side steps (token, application, invite) stay with me on purpose — those involve secrets that should not be automated.
+The recruiter agent can now provision new specialist agents end-to-end. Emit a structured `create_agent` action and the daemon writes the plugin file, updates `KNOWN_AGENTS` in two places, bumps the plugin version, branches, commits, pushes, and opens a PR. Manual Discord-side steps (token, application, invite) stay with me on purpose, those involve secrets that should not be automated.

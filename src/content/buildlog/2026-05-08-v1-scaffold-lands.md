@@ -9,4 +9,4 @@ links:
 tags: [v1, scaffold, plugin-marketplace]
 ---
 
-The first version of Neural Bridge ships as a Claude Code plugin marketplace. Three specialist agents (research, teaching-prep, content) live in `plugins/neural-bridge-core/agents/`, the wiki skeleton is in `knowledge/`, and ADRs cover the early design decisions. The hooks and compile pipeline are stubs at this point — the substrate is real but not yet alive.
+The first version of Neural Bridge ships as a Claude Code plugin marketplace. Three specialist agents (research, teaching-prep, content) live in `plugins/neural-bridge-core/agents/`, the wiki skeleton is in `knowledge/`, and ADRs cover the early design decisions. The hooks and compile pipeline are stubs at this point, the substrate is real but not yet alive.

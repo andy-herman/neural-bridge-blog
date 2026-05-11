@@ -10,8 +10,8 @@ Neural Bridge is a personal multi-agent AI substrate. Multiple specialized agent
 
 ## What ships when
 
-- **V1** — directory scaffold, three agent definitions (research, teaching-prep, content), markdown wiki skeleton, project schema. *Done.*
-- **V2** — `SessionEnd` hook, daily-log capture, `flush.py` and `compile.py`, supervisor process.
-- **V3** — voice mode, web dashboard, activity graph.
+- **V1**, directory scaffold, three agent definitions (research, teaching-prep, content), markdown wiki skeleton, project schema. *Done.*
+- **V2**, `SessionEnd` hook, daily-log capture, `flush.py` and `compile.py`, supervisor process.
+- **V3**, voice mode, web dashboard, activity graph.
 
 See the [README](https://github.com/andy-herman/neural-bridge) and [build status](https://github.com/andy-herman/neural-bridge/blob/main/docs/STATUS.md) on GitHub.

@@ -25,7 +25,7 @@ const COLOR_HEX: Record<string, string> = {
 };
 
 // Check which agents have a fetched avatar at build time. Build is OK even
-// without — placeholder renders instead.
+// without, placeholder renders instead.
 const publicAgentsDir = path.resolve('./public/agents');
 let availableAvatars: Set<string>;
 try {
@@ -96,7 +96,7 @@ try {
   <div class="mt-16 border border-dashed border-cream-300 dark:border-cream-800 rounded p-6 text-center">
     <p class="font-mono text-xs text-cream-600 dark:text-cream-500 uppercase tracking-wider mb-2">// how the roster grows</p>
     <p class="font-serif italic text-sm text-cream-800 dark:text-cream-200 max-w-2xl mx-auto">
-      When a recurring task doesn't fit an existing specialist, the recruiter agent runs a multi-turn intake, drafts a charter, and emits a structured action that ships the new agent end-to-end — plugin file, version bump, branch, PR.
+      When a recurring task doesn't fit an existing specialist, the recruiter agent runs a multi-turn intake, drafts a charter, and emits a structured action that ships the new agent end-to-end, plugin file, version bump, branch, PR.
     </p>
   </div>
 </BaseLayout>

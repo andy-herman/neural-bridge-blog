@@ -22,7 +22,7 @@ That's memory poisoning. It's the security problem almost nobody is solving for 
 
 ## The pattern: AI as your second brain
 
-Andrej Karpathy described the architecture in early 2026: instead of using vector-database RAG to give an AI long-term memory, just have it maintain a markdown wiki. Web clips, papers, transcripts go into a `raw/` folder. The AI compiles them into concept articles. The wiki grows. The AI reads it on every query. Karpathy framed it as a deliberate shift in how he was using LLMs: less time manipulating code, more time manipulating *knowledge* — kept as markdown files and images rather than as embeddings in a vector database.
+Andrej Karpathy described the architecture in early 2026: instead of using vector-database RAG to give an AI long-term memory, just have it maintain a markdown wiki. Web clips, papers, transcripts go into a `raw/` folder. The AI compiles them into concept articles. The wiki grows. The AI reads it on every query. Karpathy framed it as a deliberate shift in how he was using LLMs: less time manipulating code, more time manipulating *knowledge*, kept as markdown files and images rather than as embeddings in a vector database.
 
 Cole Medin took the pattern further with [claude-memory-compiler](https://github.com/coleam00/claude-memory-compiler), capturing every Claude Code session as raw input that compiles overnight into the wiki. I'm building [Neural Bridge](https://neural-bridge.dev) on the same pattern at multi-agent scale.
 
@@ -136,20 +136,20 @@ If you are following along, the next post in this series will walk through filin
 
 ## Further reading
 
-- [OWASP Top 10 for LLM Applications 2025](https://genai.owasp.org/llm-top-10/) — the canonical taxonomy
-- [AgentPoison (Chen et al., NeurIPS 2024)](https://arxiv.org/abs/2407.12784) — the foundational paper on memory poisoning of LLM agents
-- [PoisonedRAG (Zou et al., USENIX Security 2025)](https://www.usenix.org/system/files/usenixsecurity25-zou-poisonedrag.pdf) — five malicious documents in millions
-- [Greshake et al., *Not what you've signed up for* (2023)](https://arxiv.org/abs/2302.12173) — the original indirect prompt injection paper
-- [Karpathy's LLM Knowledge Bases gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — the pattern this paper threats-models
-- [Cole Medin's claude-memory-compiler](https://github.com/coleam00/claude-memory-compiler) — first open-source implementation of the pattern
-- [Lakera's writeup of GrafanaGhost and other indirect-injection incidents](https://www.lakera.ai/blog/indirect-prompt-injection) — recent real-world examples
-- [The Month of AI Bugs (Aug 2025)](https://www.techrepublic.com/article/news-ai-agents-prompt-injection-data-security/) — a sobering month-long disclosure series
+- [OWASP Top 10 for LLM Applications 2025](https://genai.owasp.org/llm-top-10/): the canonical taxonomy
+- [AgentPoison (Chen et al., NeurIPS 2024)](https://arxiv.org/abs/2407.12784): the foundational paper on memory poisoning of LLM agents
+- [PoisonedRAG (Zou et al., USENIX Security 2025)](https://www.usenix.org/system/files/usenixsecurity25-zou-poisonedrag.pdf): five malicious documents in millions
+- [Greshake et al., *Not what you've signed up for* (2023)](https://arxiv.org/abs/2302.12173): the original indirect prompt injection paper
+- [Karpathy's LLM Knowledge Bases gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f): the pattern this paper threats-models
+- [Cole Medin's claude-memory-compiler](https://github.com/coleam00/claude-memory-compiler): first open-source implementation of the pattern
+- [Lakera's writeup of GrafanaGhost and other indirect-injection incidents](https://www.lakera.ai/blog/indirect-prompt-injection): recent real-world examples
+- [The Month of AI Bugs (Aug 2025)](https://www.techrepublic.com/article/news-ai-agents-prompt-injection-data-security/): a sobering month-long disclosure series
 
 ## See also
 
-- Knowledge Compiler — the Neural Bridge architecture this paper threats-models
-- Security Architecture — the broader Neural Bridge threat model and mitigations
-- LLM Knowledge Bases — the broader pattern
-- Compounding Knowledge Loop — filing patterns
-- Sessions and Memory — broader memory-layer context
-- Claude Code Hooks — the SessionEnd mechanism referenced earlier in the paper
+- Knowledge Compiler: the Neural Bridge architecture this paper threats-models
+- Security Architecture: the broader Neural Bridge threat model and mitigations
+- LLM Knowledge Bases: the broader pattern
+- Compounding Knowledge Loop: filing patterns
+- Sessions and Memory: broader memory-layer context
+- Claude Code Hooks: the SessionEnd mechanism referenced earlier in the paper
