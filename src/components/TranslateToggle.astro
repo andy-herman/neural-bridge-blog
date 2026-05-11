@@ -88,7 +88,7 @@ const { hasKorean } = Astro.props;
     }
 
     // Apply persisted preference, but only if this page actually has Korean
-    // content present. Otherwise leave English active (and don't show the toggle —
+    // content present. Otherwise leave English active (and don't show the toggle;
     // the server already chose not to render it).
     function init() {
       const hasKo = document.querySelectorAll('[data-lang="ko"]').length > 0;
