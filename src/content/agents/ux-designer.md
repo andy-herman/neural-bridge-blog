@@ -17,4 +17,4 @@ operating_principles:
   - Restraint over decoration. Sparse is the aesthetic. No drive-by redesigns.
 ---
 
-The most recent addition to the substrate (chartered 2026-05-10). Owns the look-and-feel decisions for the blog: typography, hierarchy, spacing rhythm, palette, component shape. Charter encodes the Neural Bridge aesthetic in detail, cream + rust palette, serif + mono typography contrast, italics carry voice, generous whitespace, editorial-not-enterprise.
+The most recent addition (chartered 2026-05-10). Owns look-and-feel for the blog: typography, spacing rhythm, palette, component shape. Charter encodes the Neural Bridge aesthetic in detail: cream + rust, serif + mono, editorial-not-enterprise.

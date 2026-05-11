@@ -10,7 +10,7 @@ version: "v0.2"
 draft: false
 ---
 
-If you've worked in cybersecurity for more than five minutes, you've heard of OWASP. The OWASP Top 10, the list of the most critical web application security risks, has been the de-facto starting point for a generation of security work. Pen test reports cite it. Compliance frameworks reference it. Job descriptions list it.
+The OWASP Top 10, the list of the most critical web application security risks, has been the de-facto starting point for a generation of security work. Pen test reports cite it. Compliance frameworks reference it. Job descriptions list it.
 
 When AI started shipping in production, OWASP didn't pretend it was a web app. They built a separate project, a separate list, and they're already on the second iteration. If you're going to work in AI security, or even just build with AI, this is the framework you should know first.
 
@@ -18,7 +18,7 @@ When AI started shipping in production, OWASP didn't pretend it was a web app. T
 
 The [Open Worldwide Application Security Project](https://owasp.org/) is a non-profit foundation that publishes free, vendor-neutral security guidance. It's where the industry centralizes its best knowledge about how things break. The OWASP Top 10 for Web Applications, originally published in 2003 and updated periodically, became the closest thing the field had to a shared vocabulary.
 
-OWASP doesn't tell you HOW to fix things in detail. It tells you what to worry about and roughly why. Specific implementation is left to teams, books, vendors, and consultants. That looseness is the point. The Top 10 is a starting position, not a checklist.
+OWASP doesn't tell you HOW to fix things in detail. It tells you what to worry about and roughly why. That looseness is the point: a starting position, not a checklist.
 
 ## The OWASP Generative AI Security Project
 
@@ -30,7 +30,7 @@ In 2023, when LLMs began landing in production, OWASP launched a dedicated initi
 - Adversarial red-teaming methods for GenAI
 - Best practices for governance and oversight
 
-The first list, the [OWASP Top 10 for LLM Applications 2025](https://genai.owasp.org/llm-top-10/), is what most practitioners encounter first. Let me walk through it.
+The first list, the [OWASP Top 10 for LLM Applications 2025](https://genai.owasp.org/llm-top-10/), is what most practitioners encounter first.
 
 ## The 2025 Top 10 for LLM Apps
 
@@ -60,9 +60,9 @@ For build-in-public people like me building [Neural Bridge](https://neural-bridg
 
 ## How to actually use OWASP for AI
 
-There are three increasingly serious ways to use this material, and most teams will end up doing all three.
+Three ways to use this material, in increasing order of commitment.
 
-The lightest use is just **vocabulary**. Once "LLM05" means "improper output handling" to everyone in the room, conversations get noticeably faster and more honest. Half the value of the Top 10 is replacing fuzzy phrases like "the AI does sketchy things sometimes" with shared shorthand the whole team understands. Don't underestimate that.
+The lightest use is just **vocabulary**. Once "LLM05" means "improper output handling" to everyone in the room, conversations get noticeably faster and more honest. Half the value of the Top 10 is replacing fuzzy phrases like "the AI does sketchy things sometimes" with shared shorthand the whole team understands.
 
 The next step up is **self-assessment**. Walk each item against your system and answer two questions: are we exposed, and if so, what stops it? The answers will be uneven, most early-stage systems have strong controls in two or three categories and effectively nothing in the rest. That uneven answer *is* the value of the exercise. A personal project will burn about thirty minutes on this; a small SaaS runs half a day; an enterprise system takes a sprint and turns up things people had been quietly worrying about. A workable template looks like this:
 
