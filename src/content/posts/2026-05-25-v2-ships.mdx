@@ -1,0 +1,70 @@
+---
+title: "V2 ships: the substrate runs itself now"
+description: "Three days from scaffold to running system. Thirteen specialist agents, a filing-gate compile pipeline, weekly publishing cron, Korean i18n toggle, agents that ship their own PRs with approval. Plus the discipline not to start V3."
+pubDate: 2026-05-25
+project: neural-bridge
+tags: [neural-bridge, build-in-public, ai-agents, milestone]
+draft: true
+---
+
+When I [framed V2](/posts/2026-05-08-why-im-building-neural-bridge) two weeks ago, I described it as "SessionEnd hook for daily-log capture, flush.py summarizer, compile.py for nightly concept promotion, supervisor process." That was the plumbing. What V2 actually became is bigger than the plumbing list and smaller than my expectations for what would change.
+
+Bigger: the substrate now has thirteen specialist agents, ships its own PRs end-to-end from Discord with my approval, translates content to Korean automatically, and runs the entire weekly publishing pipeline without me touching anything except the draft files.
+
+Smaller: I am deferring everything in V3. No voice mode, no web dashboard, no activity graph. I am not building them yet, and the reason matters more than the shipping list.
+
+## What V2 actually shipped
+
+The original V2 plan, from the framing post:
+
+> V2: SessionEnd hook for daily-log capture, flush.py summarizer, compile.py for nightly concept promotion, supervisor process.
+
+Everything in that list shipped. Then the scope drifted in the way useful scope-drift happens, by the substrate showing me what it actually needed once it was running.
+
+**Operational layer.** launchd-managed Discord daemon, wrapped in caffeinate so the Mac never sleeps the agents. Auto-reload watcher that git-pulls main and reloads the daemon every two minutes, with self-alerting if the working tree drifts off main for more than 30 minutes (no more silent staleness windows where merged PRs sit unloaded). Rotating-file logger capped at 10MB per file, 70MB ceiling on the log directory. Per-agent claude-p timeouts so the content agent gets its full 600 seconds for long drafting and conversational agents don't hang the daemon.
+
+**Agent layer.** Thirteen specialists: research, the-professor (formerly teaching-prep), content, social, senior-pm, recruiter, automation-engineer, security-reviewer, docs-editor, luna, librarian, echo, ux-designer. Each one has its own Discord identity, its own `--add-dir` scope, its own tool allowlist, its own persistent vault notes file that auto-injects into every mention. The recruiter agent can provision new specialists end-to-end: drafts the charter, writes the plugin file, bumps the version, branches, commits, pushes, opens the PR. The only step that stays manual is the Discord setup, because that involves secrets.
+
+**Memory layer.** `flush.py` writes a per-agent daily log at every session end. `compile.py` runs nightly at 03:00. A filing gate (one adversarial LLM check) decides what gets promoted from daily logs to concept articles. Phase B compile produces actual concept article bodies with provenance frontmatter, not slug-and-summary stubs. The first real wiki harvest: seven concept articles in `knowledge/concepts/`, twenty-one connection files surfacing shared-session relationships, eight candidates quarantined for not passing the gate. Every concept carries the session id and transcript sha256 it came from. The lint pass on changed concepts runs weekly and flags drift back into imperative-AI-directed language.
+
+**Publishing layer.** Sunday 18:00 PT: `prepare_week.py` picks the next eligible draft, generates the LinkedIn variant via `claude -p` with a voice corpus saved to the vault, generates a deterministic X draft, runs the Korean translation pipeline, posts a Discord brief. Monday 18:00 PT: `scheduled-publish.yml` flips `draft: true` to `false` on the queued post and pushes. Vercel auto-deploys. A tweet-on-publish workflow creates a GitHub issue with the tweet text for manual posting from @Neural_Bridge_ (the X API moved to metered credits and the account has none on its current tier).
+
+**i18n layer.** Per-article translation toggle on every page that has prose. Single canonical English URL, Korean rendered inline behind the 한국어 button. The translation prompt is grounded in real Yozm Wishket developer-blog samples for the right register (합쇼체 with first-person 저는, not the newspaper-style 해라체). All twenty curated articles, including this one, have hand-checked Korean variants.
+
+The substrate works. The Discord daemon has been up continuously since the caffeinate wrapping landed. The auto-reload watcher catches every merged PR within two minutes. The Sunday-prep cron fires every week without me thinking about it. None of those statements were true a week ago.
+
+## What I added that wasn't planned
+
+Three things ended up in V2 that started as "later" items:
+
+**Korean i18n.** The blog is bilingual. The architecture went through two iterations: first the duplicate-route pattern (sidecar `/ko/` URLs), then a pivot to the inline-toggle pattern when the duplicate URLs started feeling like a smell. The translation prompt went through three voice rewrites before landing on the Yozm-Wishket-style 합쇼체 register. None of this was in the original V2 plan; it became a priority once the substrate had enough other things shipped to have a reachable audience.
+
+**Agents that ship code.** `open_pr_with_changes` started as a thought experiment ("could the daemon push for an agent?") and ended up being the most-used new capability in V2. Luna's first PR landed this week: a one-line course-name fix to the about page that she proposed via Discord and I approved in chat with `approve <id>`. The pattern works because the gate is right. Every push needs my explicit approval, the daemon does all the git plumbing, and the intersection-based dirty-tree check refuses only on real path collisions, not on any working-tree state. Speed without giving up the human in the loop.
+
+**Personality.** Light playfulness in low-stakes moments. 애교 strictly within 존댓말 in Korean (soft `~네요`, occasional `ㅎㅎ`, slight elongation), never as a serious-conversation deflection, never with pet names. Luna has a bit of warmth now without dropping the executive-assistant frame. Most of the rules came out of one explicit ruling early in her hardening and have held up across sessions.
+
+## Why I am not starting V3 yet
+
+The V3 list from the framing post: voice mode, web dashboard, activity graph. The temptation to start one of them this week is real. They are all visible-from-the-outside features that would make great blog posts.
+
+I am not going to.
+
+The thing I wanted out of V2, the thing I have not had with any previous personal AI project, is the substrate running me more than I run it. The Sunday cron knows to draft the Monday post. The compile pipeline knows what's worth promoting. Luna knows my standing preferences across sessions. Echo knows the shape of my writing well enough to flag drafts that don't sound like me. The recruiter knows how to onboard a new specialist. None of that needs me to babysit it. The agents go work.
+
+Adding voice mode, or a web dashboard, or a 3D BrainGraph, is adding things that look impressive in a screen recording. None of them change what the substrate does. All of them add operational surface that can break. The next bug I have to triage is one I introduce by extending the system past what was already working.
+
+So the discipline this month is the opposite of building V3. It is to use V2 for real work, watch where it bends or breaks, fix the bends, and let "this thing runs and I trust it" compound before adding the next layer. The next post about Neural Bridge will not announce a new capability. It will be about something the substrate did that I did not have to do.
+
+That is the deeper milestone of V2. The framing post called V1+V2 "the spine." The spine works. The question now is whether I can resist the urge to keep adding before the spine has carried enough weight to prove itself.
+
+## What's next this month
+
+Concrete commitments through end of May:
+
+- Two more research articles in the publishing queue. Prompt injection as a compliance risk lands May 18. AI vendors as third-party risk (the GRC × AI Security #1 piece) lands the week after.
+- Post the four legitimate tweet drafts that have been sitting in the @Neural_Bridge_ inbox since the original publish events.
+- Two operational items already filed and worth picking up: tighten `call_claude_sync` (the daemon's Python-side claude wrapper) with the same process-group hardening I just shipped for `prepare_week.py`, and document the post-PR `git checkout main` workflow gap.
+
+That is the entire roadmap for the month. No new features. Reps on what already exists.
+
+If V2 worked, the next post should be boring. I'm fine with boring.
