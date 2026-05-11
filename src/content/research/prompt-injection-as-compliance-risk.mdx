@@ -1,0 +1,81 @@
+---
+title: "Prompt Injection Is a Compliance Risk, Not Just a Security Bug"
+description: "When an LLM sits in a regulated workflow, a successful prompt injection is not just a security incident. It is potentially a material misrepresentation, an audit trail failure, or a reportable breach. GRC teams are not treating it that way yet."
+abstract: "Prompt injection is the number-one AI security risk in the OWASP taxonomy, but it has been almost entirely owned by security teams. GRC teams see it as a technical problem, not their problem. That gap is the argument: in any regulated workflow where an LLM generates advice, triage decisions, or documented outputs, a successful injection event has compliance consequences under DORA, SR 11-7, HIPAA, and the EU AI Act. This piece walks the argument from the attack mechanics through the regulated-workflow context and into the specific frameworks that make it a reportable event."
+pubDate: "2026-05-18"
+topic: "compliance-risk"
+tags: ["compliance", "ai-security", "grc", "prompt-injection", "dora", "regulation"]
+status: "working-paper"
+version: "v0.1"
+draft: true
+---
+
+The OWASP Top 10 for LLM Applications puts prompt injection at number one. Security teams know this. They have known it for years. They write about input sanitization, indirect injection vectors, and confused-deputy problems. The literature is good.
+
+GRC teams mostly treat it as someone else's reading. The framing, from day one, has been "prompt injection is a security bug." Bugs get patched. The security team handles bugs. GRC handles risk, compliance, and reporting. Those feel like different boxes.
+
+They are not different boxes once the LLM is sitting inside a regulated workflow. At that point, a successful prompt injection is not just a security event. It can be a material misrepresentation. It can be an audit trail integrity failure. Under the right frameworks, it may be a reportable incident. Most GRC teams have not mapped those connections yet. The compliance companion to two earlier papers, the OWASP taxonomy walkthrough at [/research/owasp-for-ai](/research/owasp-for-ai) and the memory poisoning deep dive at [/research/memory-poisoning-in-personal-agentic-ai-substrates](/research/memory-poisoning-in-personal-agentic-ai-substrates), follows below.
+
+## What prompt injection actually is, in one paragraph
+
+An LLM processes input as text. It does not natively distinguish between "instructions from the operator" and "content the operator asked it to read." Prompt injection exploits that. An attacker embeds instructions inside content the model is supposed to process, a PDF, a web page, a customer message, a database record, and the model follows those instructions instead of (or in addition to) its original task. Direct injection is the user typing adversarial instructions themselves. Indirect injection is the adversarial instructions arriving inside data the model trusts because the operator put it there. Indirect injection is harder to catch and more dangerous in automated workflows, because there is no human typing anything suspicious. The GrafanaGhost incident in April 2026 is a clean example: Noma Security researchers embedded instructions in URL parameters that landed in Grafana's logs. Grafana's AI assistant later read those logs during routine analysis, followed the injected instructions, and exfiltrated financial metrics and customer records to an attacker-controlled server. The model did exactly what it was told. The problem is that it was told by the wrong party.
+
+## How regulated workflows actually use LLMs
+
+This matters because the injection risk does not land the same way in a content-generation context as it does in a decision-support context. Knowing the difference is the first step GRC teams need to take.
+
+A regulated workflow, for purposes of this argument, is one where an LLM output: (a) informs or constitutes a regulated decision, (b) is recorded as part of a required audit trail, or (c) is transmitted to a client, patient, or counterparty in a capacity where accuracy is a regulatory obligation.
+
+Three representative cases:
+
+**Financial advice.** A wealth management platform uses an LLM to generate preliminary portfolio recommendations that a human advisor reviews before sending to the client. The client-facing output is regulated under MiFID II (EU) or Regulation Best Interest (US). The LLM output is not the final advice, but it is the input the advisor is reviewing. If prompt injection alters the recommendation, the advisor may forward something they did not generate and cannot fully audit.
+
+**Healthcare triage.** A hospital uses an LLM to pre-screen patient intake forms and flag urgency categories. A clinician reviews the flags. The triage output feeds the patient record under HIPAA. If an injected instruction causes the model to misclassify urgency or suppress a flag, that classification error may enter the medical record as a documented clinical assessment.
+
+**Legal document review.** A law firm uses an LLM to summarize contracts and flag non-standard clauses. The summaries go to the client as part of the legal work product. If injection alters what gets flagged or suppressed, the client receives an inaccurate summary under circumstances where the firm has a duty of care.
+
+In all three cases, the LLM is not generating blog posts. It is generating outputs that feed regulated records, regulated communications, or regulated decisions. The security team's job is to prevent the injection. GRC's job is to know what happens to the organization if the prevention fails.
+
+## The categorization gap
+
+Most GRC risk registers have a row for "AI system risk" that looks something like this: likelihood medium, impact medium, control "model output is reviewed by a human." That control sounds reasonable. It is, in fact, what most deployment architectures claim. The ForcedLeak vulnerability in Salesforce Agentforce (CVSS 9.4) illustrates why it is not sufficient on its own: the AI was acting through its own legitimate channels, generating outputs that looked like normal system behavior. A human reviewer watching the final output would not necessarily see the injection in the artifact they were reviewing.
+
+The deeper gap is definitional. Prompt injection has not been categorized as a control failure that GRC owns. It is categorized as a technical vulnerability that security owns. This matters because the two teams apply different frameworks to control failures. Security applies the vulnerability management lifecycle: find it, patch it, close the ticket. GRC applies the risk management lifecycle: assess the likelihood, assess the impact, determine the residual risk, decide whether to accept or mitigate, and maintain that decision in the risk register with supporting evidence. For prompt injection in regulated workflows, both lifecycles need to run. Right now, mostly only the security lifecycle runs.
+
+## What "breach" means here
+
+This is where the frameworks become concrete. GRC teams need to know which regulatory instrument would treat a successful injection event as a reportable incident or a material finding.
+
+**DORA Article 17 (Major ICT-related incident reporting).** The Digital Operational Resilience Act applies to financial entities in the EU. An ICT-related incident that meets the materiality thresholds in the regulatory technical standards, including impact on financial outputs, client data, or operational continuity, is reportable to the competent authority. An LLM that has been prompted by an injection to generate incorrect financial analysis and transmit it, either to a client or to a downstream system, could meet those thresholds. DORA Article 6 also requires financial entities to identify, classify, and document ICT risks, which should include AI-system-level injection risks if those systems process financial information.
+
+**SR 11-7 (Model Risk Management, Federal Reserve / OCC, US).** The Federal Reserve's supervisory guidance on model risk management treats a model as any quantitative method, system, or approach that applies statistical, economic, financial, or mathematical theories or techniques to transform inputs into estimates. LLMs used in credit, trading, or risk-scoring contexts fall within this scope by function. SR 11-7 requires that model inputs be validated and that unexpected model behavior be investigated and escalated. A prompt injection that changes model outputs is, under SR 11-7 framing, an unvalidated input producing material model error. It belongs in the model risk log.
+
+**HIPAA Security Rule (45 CFR Part 164).** The Security Rule requires covered entities and business associates to implement safeguards protecting electronic protected health information (ePHI). If an LLM processes intake forms or clinical notes containing ePHI, that LLM is handling ePHI. An injection attack that causes the model to exfiltrate or mishandle that information is a security incident under HIPAA. Whether it rises to a reportable breach depends on whether there was unauthorized access to ePHI, but the incident response obligation begins the moment the organization knows the security event occurred. "The AI did something unexpected" does not defer the reporting clock.
+
+**EU AI Act (High-Risk Systems, Article 9 and Annex III).** Medical device AI and AI used in critical infrastructure management are explicitly high-risk under the EU AI Act. High-risk systems must maintain a risk management system covering "known and foreseeable risks." Prompt injection is, as of 2025, a known and documented risk for any LLM. A high-risk AI system that did not account for injection in its risk management documentation is, at minimum, non-conformant with the Act.
+
+None of these frameworks require a catastrophic outcome to trigger obligations. They require a recognized risk to be managed. GRC teams that have not put injection risk on the AI system's formal risk register have a gap.
+
+## What to do on Monday morning
+
+None of this requires a new compliance program. It requires extending the one that exists.
+
+**Add prompt injection to AI system risk assessments.** If your organization has any LLM in a regulated workflow, the next risk assessment needs a row that asks: what is the injection surface, what controls exist, and what is the residual risk if those controls fail? The control "human reviews output" needs to be examined: does the reviewer have enough context to detect an injected output, or are they reviewing a summary of a summary?
+
+**Classify the incident type before the incident.** Work with the security team now to agree on what a successful injection in each regulated system would be classified as: security incident only, model risk event, potential reportable breach, or all three. That classification decision should be documented before the event, not negotiated in a fire drill at 11pm.
+
+**Review the DORA ICT risk register (if applicable).** DORA financial entities: if you have AI in any ICT system that processes financial data or client communications, and that system is not in the ICT risk register with injection as a named risk, the register is incomplete. The RTS thresholds for major incident reporting are mechanical once you have the classification right. You need the classification.
+
+**Map to OWASP.** OWASP LLM01 (Prompt Injection) is the reference taxonomy that auditors and regulators are converging on. Citing OWASP in your control documentation gives you a recognized framework reference, which matters under the affirmative-defense provisions in the Colorado AI Act and the "recognized frameworks" language showing up in EU guidance. The OWASP paper at [/research/owasp-for-ai](/research/owasp-for-ai) covers how to use the Top 10 as a regulatory backstop.
+
+**Talk to the security team.** This sounds obvious. It is not happening at most organizations right now. Security sees injection as a technical problem and does not know that GRC has reporting obligations that depend on the technical outcome. GRC sees injection as a security problem and does not know their audit trail requirements are in scope. The conversation needs to happen before the incident.
+
+The security team's job is to keep the injections from succeeding. GRC's job is to know what to do when one does. Right now, most organizations have planned for one of those, not both.
+
+---
+
+## See also
+
+- [OWASP for AI](/research/owasp-for-ai): taxonomy walkthrough and how to use OWASP as a regulatory backstop
+- [Memory Poisoning in Personal Agentic AI Substrates](/research/memory-poisoning-in-personal-agentic-ai-substrates): the persistent variant of injection, including GrafanaGhost and ForcedLeak incident detail
+- [AI Security Regulation in 2026](/research/ai-security-regulation-in-2026): the regulatory landscape this piece draws DORA, HIPAA, and EU AI Act context from
