@@ -1,31 +1,41 @@
 ---
 import BaseLayout from '../components/BaseLayout.astro';
 import Divider from '../components/Divider.astro';
+import TranslateToggle from '../components/TranslateToggle.astro';
 ---
 <BaseLayout title="About · neural-bridge.dev">
   <header class="mb-10 pt-4">
-    <p class="font-mono text-xs text-rust-500 uppercase tracking-wider mb-3">// About</p>
+    <div class="flex items-baseline justify-between gap-3 mb-3">
+      <p class="font-mono text-xs text-rust-500 uppercase tracking-wider">// About</p>
+      <TranslateToggle hasKorean={true} />
+    </div>
     <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight" style="font-variation-settings: 'opsz' 96, 'SOFT' 60;">Andy Herman</h1>
   </header>
 
-  <!-- Profile block: photo + identity -->
-  <!-- TODO: place profile photo at public/images/andy-profile.jpg -->
+  <!-- Profile block: photo + identity. Photo + outer flex layout are
+       language-independent; the role-line stack swaps per language. -->
   <div class="flex flex-col sm:flex-row items-start gap-6 mb-10 not-prose">
     <img
       src="/images/andy-profile.jpg"
       alt="Andy Herman"
       class="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover shrink-0 ring-2 ring-rust-200 dark:ring-rust-800"
     />
-    <div class="font-mono text-sm text-cream-700 dark:text-cream-300 space-y-1 pt-1">
+    <div class="font-mono text-sm text-cream-700 dark:text-cream-300 space-y-1 pt-1" data-lang="en">
       <p>Senior Manager · Security Technical Program Management</p>
       <p>Adjunct Lecturer · UW iSchool · Cybersecurity & Enterprise Risk Management</p>
       <p>Building Neural Bridge in public</p>
     </div>
+    <div class="font-mono text-sm text-cream-700 dark:text-cream-300 space-y-1 pt-1" data-lang="ko" hidden aria-hidden="true">
+      <p>시니어 매니저 · 보안 기술 프로그램 관리</p>
+      <p>겸임 강사 · UW iSchool · 사이버보안 및 기업 리스크 관리</p>
+      <p>Neural Bridge 공개적 개발 진행 중</p>
+    </div>
   </div>
 
-  <div class="prose dark:prose-invert max-w-none">
+  <!-- ENGLISH variant -->
+  <div class="prose dark:prose-invert max-w-none" data-lang="en">
     <p>
-      I'm curious about agentic AI: what it can actually do, where it breaks, how to make it useful inside a real workflow. Not a demo. A system. This site is where I document that exploration — the agents I'm building, the decisions I make out loud, the experiments that work and the ones that don't.
+      I'm curious about agentic AI: what it can actually do, where it breaks, how to make it useful inside a real workflow. Not a demo. A system. This site is where I document that exploration. The agents I'm building, the decisions I make out loud, the experiments that work and the ones that don't.
     </p>
     <p>
       The current main project is <a href="/projects/neural-bridge">Neural Bridge</a>, a personal AI substrate where specialized agents share memory and compound across sessions instead of starting fresh every time. Future projects land here as they begin.
@@ -51,9 +61,42 @@ import Divider from '../components/Divider.astro';
     </ul>
   </div>
 
+  <!-- KOREAN variant. 합쇼체 default with 저는 first-person, soft -죠 / -거든요
+       endings for rhythm, no em dashes (Yozm-Wishket reference). -->
+  <div class="prose dark:prose-invert max-w-none" data-lang="ko" hidden aria-hidden="true">
+    <p>
+      저는 에이전틱 AI에 대한 호기심이 큽니다. 정확히 무엇을 할 수 있는지, 어디서 무너지는지, 실제 워크플로우 안에서 어떻게 유용하게 만들 수 있는지 같은 것들이죠. 데모가 아니라 시스템입니다. 이 사이트는 그 탐구를 기록하는 공간입니다. 제가 만들고 있는 에이전트들, 공개적으로 내리는 결정들, 잘 되는 실험과 잘 되지 않은 실험까지 모두 다룹니다.
+    </p>
+    <p>
+      지금 가장 집중하고 있는 프로젝트는 <a href="/projects/neural-bridge">Neural Bridge</a>입니다. 전문화된 에이전트들이 메모리를 공유하고 세션을 거듭하며 쌓아 올리는 개인 AI 기반이죠. 매번 처음부터 다시 시작하지 않습니다. 앞으로의 프로젝트들도 시작되는 대로 여기에 올라옵니다.
+    </p>
+
+    <h2>이걸 만든 이유</h2>
+    <p>
+      AI 도구는 접근하기 쉽습니다. 그런데 대부분의 세션은 그렇지 않죠. 탭을 열고, 맥락을 설명하고, 쓸 만한 결과를 얻고, 닫습니다. 다음 세션은 아무것도 기억하지 못합니다. 이건 시스템이 아닙니다. 아주 빠른 메모장일 뿐이죠.
+    </p>
+    <p>
+      어려운 문제는 접근성이 아니라 연결된 프로세스 사이에서의 지속성입니다. 리서치 에이전트, 콘텐츠 에이전트, 강의 보조 에이전트가 메모리를 공유하고 세션을 거듭하면서 서로의 작업 위에 쌓아 올리도록 만드는 일은, "쓸 만한 결과를 얻을 수 있는가"와는 차원이 다른 문제거든요.
+    </p>
+    <p>
+      타협하지 않은 또 다른 제약은 보안입니다. 개인용 AI 툴링을 만드는 대부분의 사람들은 빠르게 움직이고 싶어 합니다. 저는 빠르게 움직이되, 단단하게 만들고 싶었습니다. 출시하는 모든 기능은 보안 베이스라인 <em>위에</em> 얹히지, 그 옆에 놓이지 않습니다. 인프라는 나중에 생각할 거리가 아닙니다.
+    </p>
+
+    <h2>연락처</h2>
+    <ul>
+      <li><a href="https://github.com/andy-herman">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/andyh17/">LinkedIn</a></li>
+      <li><a href="https://x.com/Neural_Bridge_">X / Twitter · @Neural_Bridge_</a></li>
+      <li>글쓰기 후원: <a href="https://buymeacoffee.com/neuralbridge">buymeacoffee.com/neuralbridge</a></li>
+    </ul>
+  </div>
+
   <Divider />
 
-  <p class="font-serif italic text-center text-cream-800 dark:text-cream-200">
+  <p class="font-serif italic text-center text-cream-800 dark:text-cream-200" data-lang="en">
     "The work of using the system is the work of building it."
+  </p>
+  <p class="font-serif italic text-center text-cream-800 dark:text-cream-200" data-lang="ko" hidden aria-hidden="true">
+    "시스템을 사용하는 일이 곧 시스템을 만드는 일입니다."
   </p>
 </BaseLayout>
