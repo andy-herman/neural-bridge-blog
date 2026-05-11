@@ -1,11 +1,15 @@
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, getEntry } from 'astro:content';
 import BaseLayout from '../../components/BaseLayout.astro';
 import ReadingProgress from '../../components/ReadingProgress.astro';
+import TranslateToggle from '../../components/TranslateToggle.astro';
 import { readingTime } from '../../lib/reading-time';
 
 export async function getStaticPaths() {
-  const papers = await getCollection('research');
+  // Only emit routes for English papers. The Korean sidecars live under
+  // `ko/<slug>` inside the same collection but are rendered inline into the
+  // English page via the TranslateToggle pattern (one URL per article).
+  const papers = await getCollection('research', ({ id }) => !id.startsWith('ko/'));
   return papers.map((paper) => ({
     params: { slug: paper.slug },
     props: { paper },
@@ -21,6 +25,14 @@ const TOPIC_LABELS: Record<string, string> = {
 
 const { paper } = Astro.props;
 const { Content } = await paper.render();
+
+// Try to load the Korean sidecar. If absent, the toggle won't render.
+let koEntry = null;
+try {
+  koEntry = await getEntry('research', `ko/${paper.slug}`);
+} catch { /* no Korean version yet */ }
+const KoContent = koEntry ? (await koEntry.render()).Content : null;
+
 const dateStr = paper.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
 const minutes = readingTime(paper.body);
 const topicLabel = TOPIC_LABELS[paper.data.topic] ?? paper.data.topic;
@@ -37,25 +49,57 @@ const statusLabel = paper.data.status === 'working-paper' ? 'Working Paper' : pa
         {statusLabel && <span class="opacity-80">· {statusLabel}</span>}
         {paper.data.version && <span class="opacity-60">· {paper.data.version}</span>}
         <span class="opacity-60">· {minutes} min read</span>
+        {KoContent && (
+          <span class="ml-auto">
+            <TranslateToggle hasKorean={true} />
+          </span>
+        )}
       </div>
-      <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.05] mb-5" style="font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;">
-        {paper.data.title}
-      </h1>
-      <p class="font-mono text-xs text-cream-800 dark:text-cream-300 uppercase tracking-wider">By Andy Herman</p>
+
+      <!-- English title -->
+      <div data-lang="en">
+        <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.05] mb-5" style="font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;">
+          {paper.data.title}
+        </h1>
+        <p class="font-mono text-xs text-cream-800 dark:text-cream-300 uppercase tracking-wider">By Andy Herman</p>
+      </div>
+
+      <!-- Korean title (mirrors English structure, swapped in by the toggle) -->
+      {koEntry && (
+        <div data-lang="ko" hidden aria-hidden="true">
+          <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.05] mb-5" style="font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;">
+            {koEntry.data.title}
+          </h1>
+          <p class="font-mono text-xs text-cream-800 dark:text-cream-300 uppercase tracking-wider">By Andy Herman</p>
+        </div>
+      )}
     </header>
 
     {paper.data.abstract && (
-      <aside class="my-8 p-6 border-l-2 border-rust-500 bg-cream-200/40 dark:bg-cream-900/40 rounded-r">
+      <aside class="my-8 p-6 border-l-2 border-rust-500 bg-cream-200/40 dark:bg-cream-900/40 rounded-r" data-lang="en">
         <p class="font-mono text-xs uppercase tracking-wider text-rust-500 mb-3">Abstract</p>
         <p class="font-serif italic text-cream-900 dark:text-cream-100 leading-relaxed" style="font-variation-settings: 'opsz' 24;">
           {paper.data.abstract}
         </p>
       </aside>
     )}
+    {koEntry?.data.abstract && (
+      <aside class="my-8 p-6 border-l-2 border-rust-500 bg-cream-200/40 dark:bg-cream-900/40 rounded-r" data-lang="ko" hidden aria-hidden="true">
+        <p class="font-mono text-xs uppercase tracking-wider text-rust-500 mb-3">초록</p>
+        <p class="font-serif italic text-cream-900 dark:text-cream-100 leading-relaxed" style="font-variation-settings: 'opsz' 24;">
+          {koEntry.data.abstract}
+        </p>
+      </aside>
+    )}
 
-    <div class="prose dark:prose-invert max-w-none">
+    <div class="prose dark:prose-invert max-w-none" data-lang="en">
       <Content />
     </div>
+    {KoContent && (
+      <div class="prose dark:prose-invert max-w-none" data-lang="ko" hidden aria-hidden="true">
+        <KoContent />
+      </div>
+    )}
 
     {paper.data.linkedinUrl && (
       <p class="mt-12 pt-6 border-t border-cream-200 dark:border-cream-900 font-mono text-xs uppercase tracking-wider text-cream-800 dark:text-cream-300">

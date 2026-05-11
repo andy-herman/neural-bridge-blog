@@ -1,9 +1,11 @@
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, getEntry } from 'astro:content';
 import BaseLayout from '../../components/BaseLayout.astro';
+import TranslateToggle from '../../components/TranslateToggle.astro';
 
 export async function getStaticPaths() {
-  const projects = await getCollection('projects');
+  // Only emit routes for English projects; Korean sidecars render inline.
+  const projects = await getCollection('projects', ({ id }) => !id.startsWith('ko/'));
   return projects.map((p) => ({
     params: { slug: p.slug },
     props: { project: p },
@@ -13,7 +15,13 @@ export async function getStaticPaths() {
 const { project } = Astro.props;
 const { Content } = await project.render();
 
-const allPosts = (await getCollection('posts', ({ data }) => !data.draft && data.project === project.slug))
+let koEntry = null;
+try {
+  koEntry = await getEntry('projects', `ko/${project.slug}`);
+} catch { /* no Korean version yet */ }
+const KoContent = koEntry ? (await koEntry.render()).Content : null;
+
+const allPosts = (await getCollection('posts', ({ data, id }) => !data.draft && data.project === project.slug && !id.startsWith('ko/')))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 ---
 <BaseLayout title={`${project.data.title} · neural-bridge.dev`} description={project.data.description}>
@@ -21,22 +29,47 @@ const allPosts = (await getCollection('posts', ({ data }) => !data.draft && data
     <div class="flex flex-wrap items-baseline gap-x-4 font-mono text-[11px] tracking-wider uppercase text-cream-800 dark:text-cream-300 mb-4">
       <span class={project.data.status === 'active' ? 'text-rust-500' : ''}>{project.data.status}</span>
       <span class="opacity-60">· since {project.data.started.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+      {KoContent && (
+        <span class="ml-auto">
+          <TranslateToggle hasKorean={true} />
+        </span>
+      )}
     </div>
-    <h1 class="font-serif text-5xl sm:text-6xl font-semibold tracking-tight leading-[0.95] mb-5" style="font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;">
-      {project.data.title}
-    </h1>
-    <p class="font-serif italic text-xl text-cream-800 dark:text-cream-200 leading-snug" style="font-variation-settings: 'opsz' 36;">
-      {project.data.description}
-    </p>
+
+    <div data-lang="en">
+      <h1 class="font-serif text-5xl sm:text-6xl font-semibold tracking-tight leading-[0.95] mb-5" style="font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;">
+        {project.data.title}
+      </h1>
+      <p class="font-serif italic text-xl text-cream-800 dark:text-cream-200 leading-snug" style="font-variation-settings: 'opsz' 36;">
+        {project.data.description}
+      </p>
+    </div>
+
+    {koEntry && (
+      <div data-lang="ko" hidden aria-hidden="true">
+        <h1 class="font-serif text-5xl sm:text-6xl font-semibold tracking-tight leading-[0.95] mb-5" style="font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;">
+          {koEntry.data.title}
+        </h1>
+        <p class="font-serif italic text-xl text-cream-800 dark:text-cream-200 leading-snug" style="font-variation-settings: 'opsz' 36;">
+          {koEntry.data.description}
+        </p>
+      </div>
+    )}
+
     <div class="mt-5 flex gap-5 font-mono text-xs uppercase tracking-wider">
       {project.data.repoUrl && <a href={project.data.repoUrl} class="text-rust-500 underline underline-offset-4">Repo &rarr;</a>}
       {project.data.siteUrl && <a href={project.data.siteUrl} class="text-rust-500 underline underline-offset-4">Site &rarr;</a>}
     </div>
   </header>
 
-  <div class="prose dark:prose-invert max-w-none mb-12">
+  <div class="prose dark:prose-invert max-w-none mb-12" data-lang="en">
     <Content />
   </div>
+  {KoContent && (
+    <div class="prose dark:prose-invert max-w-none mb-12" data-lang="ko" hidden aria-hidden="true">
+      <KoContent />
+    </div>
+  )}
 
   {allPosts.length > 0 && (
     <section class="border-t border-cream-200 dark:border-cream-900 pt-8">

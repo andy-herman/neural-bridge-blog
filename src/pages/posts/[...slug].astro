@@ -1,12 +1,15 @@
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, getEntry } from 'astro:content';
 import BaseLayout from '../../components/BaseLayout.astro';
 import Subscribe from '../../components/Subscribe.astro';
 import ReadingProgress from '../../components/ReadingProgress.astro';
+import TranslateToggle from '../../components/TranslateToggle.astro';
 import { readingTime } from '../../lib/reading-time';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('posts');
+  // Only emit routes for English posts; Korean sidecars under `ko/<slug>`
+  // are rendered inline into the same URL via the TranslateToggle pattern.
+  const posts = await getCollection('posts', ({ id }) => !id.startsWith('ko/'));
   return posts.map((post) => ({
     params: { slug: post.slug },
     props: { post },
@@ -15,6 +18,13 @@ export async function getStaticPaths() {
 
 const { post } = Astro.props;
 const { Content } = await post.render();
+
+let koEntry = null;
+try {
+  koEntry = await getEntry('posts', `ko/${post.slug}`);
+} catch { /* no Korean version yet */ }
+const KoContent = koEntry ? (await koEntry.render()).Content : null;
+
 const dateStr = post.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
 const minutes = readingTime(post.body);
 ---
@@ -27,18 +37,42 @@ const minutes = readingTime(post.body);
         <time datetime={post.data.pubDate.toISOString()}>{dateStr}</time>
         {post.data.project && <span class="text-rust-500">/ {post.data.project}</span>}
         <span class="opacity-60">· {minutes} min read</span>
+        {KoContent && (
+          <span class="ml-auto">
+            <TranslateToggle hasKorean={true} />
+          </span>
+        )}
       </div>
-      <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.05] mb-5" style="font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;">
-        {post.data.title}
-      </h1>
-      <p class="font-serif italic text-xl text-cream-800 dark:text-cream-200 leading-snug" style="font-variation-settings: 'opsz' 36;">
-        {post.data.description}
-      </p>
+
+      <div data-lang="en">
+        <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.05] mb-5" style="font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;">
+          {post.data.title}
+        </h1>
+        <p class="font-serif italic text-xl text-cream-800 dark:text-cream-200 leading-snug" style="font-variation-settings: 'opsz' 36;">
+          {post.data.description}
+        </p>
+      </div>
+
+      {koEntry && (
+        <div data-lang="ko" hidden aria-hidden="true">
+          <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight leading-[1.05] mb-5" style="font-variation-settings: 'opsz' 144, 'SOFT' 80, 'WONK' 1;">
+            {koEntry.data.title}
+          </h1>
+          <p class="font-serif italic text-xl text-cream-800 dark:text-cream-200 leading-snug" style="font-variation-settings: 'opsz' 36;">
+            {koEntry.data.description}
+          </p>
+        </div>
+      )}
     </header>
 
-    <div class="prose dark:prose-invert max-w-none post-body">
+    <div class="prose dark:prose-invert max-w-none post-body" data-lang="en">
       <Content />
     </div>
+    {KoContent && (
+      <div class="prose dark:prose-invert max-w-none post-body" data-lang="ko" hidden aria-hidden="true">
+        <KoContent />
+      </div>
+    )}
 
     {post.data.linkedinUrl && (
       <p class="mt-12 pt-6 border-t border-cream-200 dark:border-cream-900 font-mono text-xs uppercase tracking-wider text-cream-800 dark:text-cream-300">

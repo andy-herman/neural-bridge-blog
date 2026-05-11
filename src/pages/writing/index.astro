@@ -7,15 +7,15 @@ import { readingTime } from '../../lib/reading-time';
 
 const RECENT_PER_SECTION = 3;
 
-const allPosts = (await getCollection('posts', ({ data }) => !data.draft))
+const allPosts = (await getCollection('posts', ({ data, id }) => !data.draft && !id.startsWith('ko/')))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 const recentPosts = allPosts.slice(0, RECENT_PER_SECTION);
 
-const allResearch = (await getCollection('research', ({ data }) => !data.draft))
+const allResearch = (await getCollection('research', ({ data, id }) => !data.draft && !id.startsWith('ko/')))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 const recentResearch = allResearch.slice(0, RECENT_PER_SECTION);
 
-const allProjects = (await getCollection('projects'))
+const allProjects = (await getCollection('projects', ({ id }) => !id.startsWith('ko/')))
   .sort((a, b) => b.data.started.valueOf() - a.data.started.valueOf());
 const recentProjects = allProjects.slice(0, RECENT_PER_SECTION);
 

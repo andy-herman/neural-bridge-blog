@@ -16,7 +16,7 @@ interface UnifiedItem {
   date: Date;
 }
 
-const posts = (await getCollection('posts', ({ data }) => !data.draft))
+const posts = (await getCollection('posts', ({ data, id }) => !data.draft && !id.startsWith('ko/')))
   .map<UnifiedItem>(p => ({
     type: 'post',
     href: `/posts/${p.slug}`,
@@ -25,7 +25,7 @@ const posts = (await getCollection('posts', ({ data }) => !data.draft))
     date: p.data.pubDate,
   }));
 
-const research = (await getCollection('research', ({ data }) => !data.draft))
+const research = (await getCollection('research', ({ data, id }) => !data.draft && !id.startsWith('ko/')))
   .map<UnifiedItem>(p => ({
     type: 'research',
     href: `/research/${p.slug}`,
@@ -34,7 +34,7 @@ const research = (await getCollection('research', ({ data }) => !data.draft))
     date: p.data.pubDate,
   }));
 
-const projects = (await getCollection('projects'))
+const projects = (await getCollection('projects', ({ id }) => !id.startsWith('ko/')))
   .map<UnifiedItem>(p => ({
     type: 'project',
     href: `/projects/${p.slug}`,

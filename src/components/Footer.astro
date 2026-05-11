@@ -1,30 +1,22 @@
 ---
-import { t, type Locale } from '../lib/i18n';
-import LanguageToggle from './LanguageToggle.astro';
-
 export interface Props {
   wide?: boolean;
-  locale?: Locale;
 }
-const { wide = false, locale = 'en' } = Astro.props;
+const { wide = false } = Astro.props;
 const widthClass = wide ? 'max-w-6xl' : 'max-w-2xl';
 const year = new Date().getFullYear();
-const s = t(locale);
 ---
 <footer class="border-t border-cream-200 dark:border-cream-900 mt-16 py-10">
   <div class={`${widthClass} mx-auto px-6 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4 text-sm text-cream-800 dark:text-cream-300`}>
     <p class="font-mono text-xs">&copy; {year}, ANDY HERMAN</p>
-    <div class="flex flex-col sm:flex-row sm:items-baseline gap-3 sm:gap-5">
-      <p class="font-mono text-xs">
-        <a href="/rss.xml" class="hover:text-rust-500 transition-colors">{s.footer.rss}</a>
-        <span class="mx-2 opacity-40">/</span>
-        <a href="https://github.com/andy-herman" class="hover:text-rust-500 transition-colors">{s.footer.github}</a>
-        <span class="mx-2 opacity-40">/</span>
-        <a href="https://github.com/andy-herman/neural-bridge" class="hover:text-rust-500 transition-colors">{s.footer.neural_bridge}</a>
-        <span class="mx-2 opacity-40">/</span>
-        <a href="https://buymeacoffee.com/neuralbridge" class="hover:text-rust-500 transition-colors">{s.footer.support}</a>
-      </p>
-      <LanguageToggle locale={locale} />
-    </div>
+    <p class="font-mono text-xs">
+      <a href="/rss.xml" class="hover:text-rust-500 transition-colors">RSS</a>
+      <span class="mx-2 opacity-40">/</span>
+      <a href="https://github.com/andy-herman" class="hover:text-rust-500 transition-colors">GITHUB</a>
+      <span class="mx-2 opacity-40">/</span>
+      <a href="https://github.com/andy-herman/neural-bridge" class="hover:text-rust-500 transition-colors">NEURAL-BRIDGE</a>
+      <span class="mx-2 opacity-40">/</span>
+      <a href="https://buymeacoffee.com/neuralbridge" class="hover:text-rust-500 transition-colors">SUPPORT</a>
+    </p>
   </div>
 </footer>
