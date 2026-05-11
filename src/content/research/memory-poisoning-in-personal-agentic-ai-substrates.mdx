@@ -12,7 +12,7 @@ linkedinUrl: "https://www.linkedin.com/pulse/memory-poisoning-when-ai-remembers-
 draft: false
 ---
 
-Imagine you set up an AI assistant to summarize your reading list. Every Sunday it scans the articles you saved that week, distills them into your personal knowledge base, and answers questions like *"what did I learn about cybersecurity this month?"* You read its summaries. You trust them. They're built from articles you chose.
+You set up an AI assistant to summarize your reading list. Every Sunday it scans the articles you saved that week, distills them into your personal knowledge base, and answers questions like *"what did I learn about cybersecurity this month?"* You read its summaries. You trust them. They're built from articles you chose.
 
 Now imagine someone you've never heard of can write entries into that knowledge base.
 
@@ -39,8 +39,6 @@ Memory poisoning is different. It sits in OWASP's [LLM04 (Data and Model Poisoni
 Put another way: prompt injection vanishes when the session ends. Memory poisoning is what your AI wakes up believing.
 
 ## It's not theoretical
-
-This is where the academic literature has caught up.
 
 [**AgentPoison** (Chen et al., NeurIPS 2024)](https://arxiv.org/abs/2407.12784) demonstrated backdoor attacks on RAG-based LLM agents. By poisoning the agent's long-term memory with *fewer than 0.1% adversarial entries*, the researchers achieved ≥80% attack success rates while keeping the system's normal performance within 1% of baseline. Translation: you would never notice the difference until the agent recommended the wrong thing on the right query.
 
@@ -80,7 +78,7 @@ Three reasons:
 
 ## What you can do about it
 
-The good news: the mitigations exist. The bad news: they're not in any of the popular memory-compiler tools yet. If you're building on this pattern, you're going to need to add them yourself.
+The mitigations exist. None of them are in the popular memory-compiler tools yet. If you're building on this pattern, you'll need to add them yourself.
 
 **Filing gate.** Before content moves from `daily-logs/` or `raw/` into `wiki/concepts/`, run a separate LLM pass with an explicitly adversarial prompt. Something like:
 
