@@ -17,6 +17,11 @@
 // Skips:
 //   - Files marked draft: true
 //   - Posts older than 7 days (avoids drafting on edits to old posts)
+//   - Files under src/content/<collection>/ko/ (Korean sidecars are rendered
+//     inline via the TranslateToggle; they have no separate URL to tweet)
+//   - Posts that already have an open tweet-draft issue for the same URL
+//     (avoids re-emitting drafts when published content is edited in place
+//     for em-dash sweeps, editorial passes, etc.)
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -61,9 +66,37 @@ function ensureLabelExists() {
   }
 }
 
+function findExistingOpenIssue(url) {
+  // Return the issue number of an open tweet-draft issue whose body
+  // references the given URL, or null if none exists. The body format
+  // (set below) embeds the URL in `**Tweet draft for:** [<title>](<url>)`,
+  // so a substring search against open issues with the tweet-draft label
+  // catches re-emits cleanly.
+  try {
+    const out = execFileSync('gh', [
+      'issue', 'list',
+      '--state', 'open',
+      '--label', 'tweet-draft',
+      '--search', url,
+      '--json', 'number',
+      '--limit', '5',
+    ], { encoding: 'utf-8' });
+    const list = JSON.parse(out);
+    return Array.isArray(list) && list.length > 0 ? list[0].number : null;
+  } catch (err) {
+    console.error(`gh issue list dedupe lookup failed (continuing): ${err.message}`);
+    return null;
+  }
+}
+
 async function createIssue({ tweet, title, url }) {
   if (!process.env.GITHUB_TOKEN && !process.env.GH_TOKEN) {
     console.log('SKIP issue creation: no GITHUB_TOKEN/GH_TOKEN');
+    return;
+  }
+  const existing = findExistingOpenIssue(url);
+  if (existing) {
+    console.log(`SKIP issue creation: open tweet-draft issue #${existing} already exists for ${url}`);
     return;
   }
   ensureLabelExists();
@@ -104,6 +137,15 @@ async function main() {
 
   for (const file of files) {
     try {
+      // Skip Korean sidecars — they're inlined via the TranslateToggle and
+      // have no separate URL. The path looks like
+      // src/content/<collection>/ko/<slug>.mdx.
+      const normalized = file.replace(/\\/g, '/');
+      if (/\/content\/[^/]+\/ko\//.test(normalized)) {
+        console.log(`SKIP (Korean sidecar, rendered inline via toggle): ${file}`);
+        continue;
+      }
+
       const raw = await fs.readFile(file, 'utf-8');
       const { data } = matter(raw);
 
