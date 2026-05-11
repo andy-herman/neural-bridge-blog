@@ -93,18 +93,28 @@ async function translateFile(sourcePath, promptTemplate, opts) {
     if (lines.length && lines[lines.length - 1].startsWith('```')) lines.pop();
     body = lines.join('\n');
   }
+  // If the model added a preamble, snip back to the first frontmatter delimiter
+  // so we recover gracefully instead of failing the whole file.
+  if (!body.startsWith('---')) {
+    const fmIdx = body.indexOf('\n---');
+    if (fmIdx !== -1) {
+      const trimmed = body.slice(fmIdx + 1);
+      console.error(`  ⚠ ${path.relative(REPO_ROOT, sourcePath)}: stripped ${fmIdx} chars of preamble before frontmatter`);
+      body = trimmed;
+    }
+  }
   if (!body.startsWith('---')) {
     console.error(`  ! ${path.relative(REPO_ROOT, sourcePath)}: output doesn't start with frontmatter (---)`);
     return { status: 'failed', error: 'no-frontmatter' };
   }
 
   // Em-dash safety net. The prompt forbids them; if any slipped through,
-  // strip them and log a warning. This is belt-and-suspenders for Andy's
-  // strict voice rule.
+  // strip them and log a warning. Collapse surrounding whitespace so we
+  // don't leave double-space artifacts in bullet items.
   const emDashCount = (body.match(/[—–]/g) || []).length;
   if (emDashCount > 0) {
     console.error(`  ⚠ ${path.relative(REPO_ROOT, sourcePath)}: contains ${emDashCount} em/en dash(es); stripping`);
-    body = body.replace(/—/g, ', ').replace(/–/g, ', ');
+    body = body.replace(/\s*[—–]\s*/g, ', ');
   }
 
   await fs.mkdir(path.dirname(target), { recursive: true });
