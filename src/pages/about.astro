@@ -8,21 +8,45 @@ import Divider from '../components/Divider.astro';
     <h1 class="font-serif text-4xl sm:text-5xl font-semibold tracking-tight" style="font-variation-settings: 'opsz' 96, 'SOFT' 60;">Andy Herman</h1>
   </header>
 
+  <!-- Profile block: photo + identity -->
+  <!-- TODO: place profile photo at public/images/andy-profile.jpg -->
+  <div class="flex flex-col sm:flex-row items-start gap-6 mb-10 not-prose">
+    <img
+      src="/images/andy-profile.jpg"
+      alt="Andy Herman"
+      class="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover shrink-0 ring-2 ring-rust-200 dark:ring-rust-800"
+    />
+    <div class="font-mono text-sm text-cream-700 dark:text-cream-300 space-y-1 pt-1">
+      <p>Senior Manager · Security Technical Program Management</p>
+      <p>Adjunct Lecturer · UW iSchool · INFO 310</p>
+      <p>Building Neural Bridge in public</p>
+    </div>
+  </div>
+
   <div class="prose dark:prose-invert max-w-none">
     <p>
-      I'm Andy. I'm curious about agentic AI tools: what they can do, where they break, how to make them actually useful in daily work. This site is where I write about that exploration. The agents I'm building, the decisions I make out loud, the experiments that work and the ones that don't.
+      I'm curious about agentic AI: what it can actually do, where it breaks, how to make it useful inside a real workflow. Not a demo. A system. This site is where I document that exploration — the agents I'm building, the decisions I make out loud, the experiments that work and the ones that don't.
     </p>
     <p>
-      The current main project is <a href="/projects/neural-bridge">Neural Bridge</a>, a personal AI substrate that lets specialized agents share memory and compound across sessions instead of starting fresh every time. Future projects land here as they begin.
+      The current main project is <a href="/projects/neural-bridge">Neural Bridge</a>, a personal AI substrate where specialized agents share memory and compound across sessions instead of starting fresh every time. Future projects land here as they begin.
+    </p>
+
+    <h2>Why I built this</h2>
+    <p>
+      AI tools are accessible. Most sessions are not. You open a tab, explain your context, get something useful, close it, and the next session knows nothing. That is not a system. That is a very fast notepad.
     </p>
     <p>
-      Most of the writing cross-posts to LinkedIn where the audiences overlap.
+      The harder problem is not access. It is persistence across interconnected processes. Getting a research agent, a content agent, and a teaching assistant to share memory and compound on each other's work, session over session, is a different class of problem than "can I get a useful output."
+    </p>
+    <p>
+      The other constraint I refused to compromise on: security. Most people building personal AI tooling want to move fast. I wanted to move fast to harden. Every capability I ship sits on top of a security baseline, not beside it. The infrastructure is not an afterthought.
     </p>
 
     <h2>Find me</h2>
     <ul>
       <li><a href="https://github.com/andy-herman">GitHub</a></li>
-      <li>LinkedIn (TBD)</li>
+      <li><a href="https://www.linkedin.com/in/andyh17/">LinkedIn</a></li>
+      <li><a href="https://x.com/Neural_Bridge_">X / Twitter · @Neural_Bridge_</a></li>
       <li>Support the writing: <a href="https://buymeacoffee.com/neuralbridge">buymeacoffee.com/neuralbridge</a></li>
     </ul>
   </div>
