@@ -2,12 +2,12 @@
 title: "I built a filing gate to keep my AI from poisoning its own memory. It caught my own injection."
 description: "Memory-poisoning prompt injection isn't theoretical. Twenty-four hours after I published the threat model, a friend planted one in the LinkedIn comments. Here's the structural defense I built."
 abstract: "When AI agents write into shared memory and other AI agents read from that memory, you have built a perfect channel for prompt injection. This piece walks through a concrete defense: a promotion-time filing gate that issues PROMOTE / QUARANTINE / REJECT verdicts on every candidate concept before it reaches the shared wiki. I tested it with a synthetic attack and the gate caught it on the first try. Then a friend tested it for real, in the comments under the threat-model post, with a textbook LLM04 (Data and Model Poisoning) attempt directed at downstream consumers. The gate would have caught that too. The piece walks through the gate's six checks, the design decisions behind splitting it from the article writer, and what this kind of structural defense doesn't solve."
-pubDate: "2026-05-11"
+pubDate: "2026-05-12"
 topic: "agentic-ai-security"
 tags: ["research", "agentic-ai-security", "memory-poisoning", "prompt-injection", "filing-gate", "build-in-public"]
 status: "working-paper"
 version: "v0.1"
-draft: true
+draft: false
 ---
 
 I shipped a personal multi-agent AI system this week. Five specialists (research, teaching prep, content, senior PM, social) writing into a shared markdown wiki. The wiki is the substrate: every agent reads it, the better ones write into it, and the more it grows the more useful each agent becomes.
