@@ -1,0 +1,81 @@
+---
+title: "Precise Isn't Meaningful"
+description: "I made my regulatory AI score reproducible, then made it report its own uncertainty, and it still wasn't a real measurement. A score of 0.5523 looks precise. It was four decimals of false precision over a five-band rubric, blended across regulators who were measuring different things. This is how I made the number mean what it says."
+abstract: "Touchstone scores regulatory self-assessments with a panel of regulator personas, each grading against a five-band rubric (fully addresses, substantial, partial, weak, fundamentally insufficient). The system reported a continuous score to four decimal places and averaged it across personas. After making that score reproducible and sampled, I asked a harder question: does the number mean anything? Measurement theory and the automated-scoring literature say no, on three grounds: the construct is ordinal so the within-band decimals are noise; one blended number destroys the per-requirement diagnosis a regulator needs; and averaging raters whose rubrics anchor to different constructs produces a number whose ranking is an accident of the scales. The fix: report the band, not the decimals; keep a per-regulator profile instead of a blended mean; and measure agreement with humans on the bands using quadratic weighted kappa. With honest caveats about where decomposition does and does not help."
+pubDate: "2026-06-09"
+topic: "development-playbooks"
+tags: ["ai-engineering", "compliance", "grc", "llm", "evaluation", "measurement", "psychometrics", "calibration", "build-in-public"]
+status: "working-paper"
+version: "v0.1"
+draft: false
+---
+
+In the last post I wrote about making Touchstone's regulator score reproducible, then admitting that reproducible was not the same as reliable and rebuilding it to sample the judge and report an uncertainty band. I was proud of where it landed. The score was repeatable, and it was honest about how confident it was.
+
+Then I looked at an actual number it produced. The paper scored **0.5523**. And I sat with a question I had been avoiding: what does 0.5523 mean?
+
+Not "is it reproducible," I had fixed that. Not "is it confident," I had fixed that too. I mean the number itself. What is the difference between a paper that scores 0.5523 and one that scores 0.5817? If I could not answer that, then all the reproducibility and all the error bars in the world were decorating a number that did not say anything.
+
+It turned out the number was lying, and it was lying with precision.
+
+## Four decimals over five buckets
+
+Here is how the scoring actually works, which I had not examined closely enough. Each regulator persona grades against a **five-band rubric** written into its charter: fully addresses, substantial, partial, weak, fundamentally insufficient. Those are the rungs. That is the entire ladder.
+
+But the model does not return a rung. It returns a float, and the system prints it to four decimal places. So I was taking a five-level ordinal judgment and reporting it as if it were a measurement accurate to one part in ten thousand.
+
+Nothing in any charter tells the model what separates 0.42 from 0.47. There is no definition of the within-band continuum, because there is no within-band continuum, because the rubric is five buckets. The third and fourth decimals are not fine-grained signal. They are the model's arbitrary noise, dressed up as precision. The presentation guidance here is old and blunt: report numbers to [two or three effective digits](https://pmc.ncbi.nlm.nih.gov/articles/PMC4483789/), because extra digits "swamp the reader and obscure the message." A [0,1] score with four decimals is four significant figures of a quantity that has five meaningful states.
+
+This is the difference between *precise* and *meaningful*, and I had spent weeks making the number more precise without once checking whether the precision referred to anything.
+
+## One number hides where it failed
+
+The second problem is deeper than digits.
+
+A regulator does not actually want a single number. A regulator wants to know which obligations the paper satisfies and which it does not: is the senior-manager accountability named, are the impact tolerances quantified, is the exit plan tested. A single blended score for the whole paper collapses all of that into one scalar and throws the diagnosis away.
+
+The research here is unusually consistent. Decomposed, per-criterion scoring correlates much better with expert judgment than one holistic number. In one legal-domain study the decomposed approach reached a correlation of [0.78 with experts versus 0.35](https://arxiv.org/html/2509.16093v1) for a single pointwise LLM score. The decomposition does not just score better, it tells you *why* a paper failed, which is the entire job in compliance. A blended scalar, as one survey puts it, "cannot explain its own rationale or support fine-grained diagnosis."
+
+My scorer was producing exactly the opaque single number the literature warns against, and then I was reporting four decimals of it.
+
+## The worst operation in the pipeline
+
+The third problem is the one I am least comfortable about, because it had been sitting in the code the whole time looking reasonable.
+
+I had three regulator personas, and I averaged their scores into one overall number, weighting some more than others. That feels obviously fine. It is not.
+
+The three personas grade against *different rubrics*. The prudential regulator's "substantial" is anchored to named accountability and quantified impact tolerances. A cybersecurity regulator's "substantial" is anchored to a completely different set of legal requirements. These are not the same ruler. They are not even measuring the same thing. And measurement theory has a precise word for what happens when you average values from scales anchored to different constructs: the result is [*meaningless*](https://journals.sagepub.com/doi/10.3102/10769986012004383), in the technical sense that which paper comes out "higher" can be an accident of the scales you happened to use rather than a fact about the papers.
+
+So my headline number was a weighted average of incommensurable judgments, reported to four decimals. Every layer of that sentence is a problem.
+
+## What I shipped
+
+The fixes follow directly from the diagnosis, and the encouraging part is that two of them were cheap because the earlier work had already done the hard part.
+
+**Report the band, not the decimals.** The primary output is now the rung: "Partial (0.50-0.69)", not "0.5523". The raw float still exists in the data for audit, but it is no longer the headline, because the headline should not claim precision the rubric cannot support. This was a small, pure mapping from score to band, and it removed the single most indefensible thing in the whole system at essentially zero cost.
+
+**Keep a per-regulator profile, not a blend.** Instead of leading with one averaged number, the score is now a profile: each regulator's band, kept separate and visible. The blended roll-up still exists for anyone who needs a single portfolio figure, but it is explicitly labelled as a policy summary, not as the measurement. A vector of three honest bands says far more than one dishonest average.
+
+**Measure agreement on the bands.** The calibration harness I built earlier compared model scores to human scores as raw numbers. That was the wrong comparison too. It now computes quadratic weighted kappa over the *band* indices, which is the standard agreement statistic for ordinal scoring. When real reviewer labels arrive, I will be asking the right question: does the model land in the same band a human expert would, and how badly does it miss when it misses, not whether two arbitrary decimals coincide.
+
+None of this required a smarter model. It required treating the score as a measurement and asking what kind of scale it actually lives on.
+
+## What I am being careful not to overclaim
+
+The research was emphatic about a few things, and I want to carry them honestly rather than turn "decompose everything" into a new dogma.
+
+Decomposition is not a free win. There is good evidence that breaking a task into per-criterion checks helps when you are *comparing* two answers, but [no consistent benefit](https://arxiv.org/abs/2508.15218) when you are scoring one answer on an absolute scale, which is exactly what a compliance score is. So the big next step, actually decomposing each persona into a sub-score per requirement, is not "split it into as many pieces as possible." It is "write genuinely good anchored descriptors and worked examples for each requirement, and validate them," which is slow, careful work. I have scoped it as its own piece rather than rushing it.
+
+Finer is also not better. It is tempting to conclude from all this that I should use more bands, or fewer. The evidence says neither: a small number of well-anchored levels, somewhere around five, tends to align best with human judgment, and pushing toward a continuous scale [degrades reliability](https://arxiv.org/abs/2502.02846). The existing five bands are about right. The mistake was never the five bands. It was reporting four decimals on top of them and averaging across rulers.
+
+And the deepest gap is unchanged from the last post: I still need real human labels. The calibration harness is built, it now speaks the right ordinal language, and it is still empty. A measurement only becomes trustworthy when it has been checked against the thing it claims to measure, and for a regulatory score that means sitting real reviewers down with real drafts. No amount of measurement theory substitutes for that.
+
+## Three properties
+
+This is the third post in a row about the same number, and I did not expect that when I started. The arc has turned out to be simple, and I think it generalises well past compliance.
+
+A number you can trust has to be three things. **Repeatable**, so that when it moves, the movement is real and not the model rolling dice. **Honest about its uncertainty**, so a confident number and a guess do not look identical. And **honest about its meaning**, so the scale it is reported on matches the scale the judgment actually lives on. I spent the first post earning the first property and mistaking it for all three. The second post earned the second. This one is the third, and it is the one I would have been most likely to skip, because the number already looked rigorous. Four decimal places will do that. They make a five-bucket guess look like a measurement.
+
+The model was the easy part, again. Getting the model to admit what it does not know was the second post. Getting the number to admit what it cannot mean was this one.
+
+#AIEngineering #Compliance #GRC #LLMEvaluation #Measurement #Psychometrics #Calibration #BuildInPublic #RegTech

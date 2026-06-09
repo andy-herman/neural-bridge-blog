@@ -1,0 +1,87 @@
+---
+title: "Repeatable Isn't Reliable"
+description: "I built an AI that scores regulatory submissions, spent a week making the score reproducible, and called it a win. It wasn't. Reproducible and reliable are not the same word, and the gap between them is where a score you can actually trust lives. This is how I closed it: sampling, a stabilized consistency engine, and a harness to check the score against a human."
+abstract: "Touchstone scores regulatory self-assessments with a panel of regulator personas. I made the score reproducible by querying the judge once at temperature zero, and the same paper started scoring identically to four decimal places. That felt like rigor. It was the opposite: a single greedy pass is repeatable but it is one draw from a distribution, and the run-to-run wobble I had proudly suppressed was the judge telling me how unsure it was. This piece walks the whole arc: the trap (reproducible felt like trustworthy), the reframe (temperature zero is not even deterministic on a hosted endpoint, and a single sample is not a reliable one), the validation model I built instead (sample N times, report the median, carry the band), the moment I realized the cross-submission consistency engine had caught the same disease and the deterministic fix that cured it, and the calibration harness that finally lets me ask whether a reproducible score is also a correct one."
+pubDate: "2026-06-09"
+topic: "development-playbooks"
+tags: ["ai-engineering", "compliance", "grc", "llm", "agentic-ai", "evaluation", "llm-as-judge", "reproducibility", "calibration"]
+status: "working-paper"
+version: "v0.3"
+draft: false
+---
+
+I built an AI that scores regulatory submissions the way a regulator would. You feed it a draft self-assessment, a panel of regulator personas reads it, and it returns a score: how well does this paper answer what the regulator actually wants to see, and where are the gaps. It is the heart of the multi-agent compliance system I have been writing about in this series, the one I call Touchstone.
+
+For a while it worked and I was happy with it. Then one afternoon I made a small edit to a draft, ran the score, and watched it climb about a point. Good edit, I thought. Out of habit I ran it again without changing a single character. It climbed again. Same paper. Same model. Different number.
+
+So I did what any reasonable person does. I made it stop. I scored the panel from a cold start, fixed every input, set the temperature to zero, and combined the three persona scores with plain arithmetic instead of another model call. The wobble vanished. The same paper started returning the same score to four decimal places, every time. I had built a reproducible regulatory scorer, and I was proud of it.
+
+I was also wrong about what I had built. It took me a while to see it.
+
+## The trap: reproducible felt like trustworthy
+
+Here is the mistake, stated plainly. I assumed that a score which does not move is a score you can trust. Those are different claims, and the distance between them turned out to be the whole problem.
+
+A score is a measurement. The reason you want it to hold still is so that when it moves, the movement means something: you changed the draft, the score went up, the edit helped. Reproducibility serves that goal. But reproducibility is not the goal. The goal is a number that reflects the quality of the paper and tells you how confident it is in that reflection. I had delivered the first half and quietly assumed the second came free with it.
+
+It does not come free. When I went looking, I found two separate problems hiding under my tidy four-decimal number.
+
+## Temperature zero is not the floor you think it is
+
+The first problem is that temperature zero does not actually make a hosted language model deterministic. I had believed, the way a lot of people believe, that greedy decoding means same input, same output, always. On a real serving stack that is not true. The output depends on how your request happens to get batched with other traffic, and that batching varies with load. Researchers at Thinking Machines [showed this cleanly in 2025](https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/): a thousand temperature-zero completions of the identical prompt produced dozens of distinct outputs, and only a specialised, batch-invariant setup collapsed them back to one.
+
+So my "reproducible to four decimal places" was real, but it was luck wearing a lab coat. It held because the deployment behind my scorer had not moved and the load had not perturbed it. The day the provider updates the model behind that endpoint, or the traffic pattern shifts, the floor moves, and every score I had archived quietly stops being comparable to every new one. I had no way to even notice that had happened, because nothing recorded which version of the model produced which score.
+
+## The wobble was the signal
+
+The second problem is the one that actually changed how I think.
+
+Even when a judge is perfectly repeatable, a single pass is one sample from a distribution. The model has a spread of opinions about your paper, and greedy decoding hands you exactly one of them, over and over. Repeatable, yes. But it could be a repeatable outlier, and you would never know, because it never disagrees with itself.
+
+This is well-trodden ground in the research, I just had not connected it to my own scorer. The whole [self-consistency](https://arxiv.org/abs/2203.11171) line of work earns its accuracy by sampling a model many times and taking the consensus, the precise opposite of taking one greedy answer. More recent work on using models as judges, like the [Rating Roulette](https://arxiv.org/abs/2510.27106) study, found that judges have low run-to-run agreement with themselves and that turning sampling off is the worst of the available options, not the most rigorous.
+
+Read against that, the few points of wobble I had been so pleased to eliminate were not noise. They were the judge telling me how sure it was. A paper that scores between 0.43 and 0.46 across runs is a different situation from one that scores 0.30 to 0.59, even if both average to the same place, and my reproducible scorer was throwing that distinction in the bin. Going greedy did not make the judge more certain. It just stopped it from admitting when it was guessing.
+
+## What I built instead: a score that reports its own uncertainty
+
+So I rebuilt the scoring path around a simple reframe. Scored output consistency is not reproducibility. It is reproducibility plus reliability plus provenance. Here is what that looks like in Touchstone now.
+
+Each regulator persona is queried several times, not once, and at a temperature above zero so the distribution can actually show itself. The reported score is the median of those passes, which is robust to a single weird run in a way a mean is not. Alongside the median, the score now carries a band: the lowest and highest passes it saw, and the standard deviation across them. A tight band means the judge is confident and you can lean on the number. A wide band means the judge is unsure and a human should look before anyone acts on it. The aggregate score across the panel carries its own combined band, computed to line up with the same weighting the headline number uses.
+
+None of those individual ingredients are mine. Sampling a model and taking the consensus is old. Using a panel of judges instead of one is a [documented pattern](https://arxiv.org/abs/2404.18796). What I had not done, and what mattered for this use case, was treat the regulator score as a measurement that is required to declare its own error bar before anyone files anything on the strength of it.
+
+I also stamped every score with its provenance: which model deployment produced it, which version, how many samples, at what temperature, and when. It is unglamorous plumbing. It is also the difference between an archive of comparable scores and an archive that silently mixes model generations and lets you draw a trend line through noise. And I wrote the uncertainty math as a small, pure function with its own tests, because the one thing worse than an unreliable score is a confidently wrong reliability number.
+
+## The same disease, caught twice, cured twice
+
+There is a second half of this system that checks a new submission against everything the firm has filed before, so the firm does not contradict itself across filings over time. Months ago that checker threw a contradiction that was not real. It had read the same paragraph twice, extracted it two slightly different ways, compared its own two readings, and reported a conflict that existed only in its own output.
+
+At the time I filed that as a one-off bug. It was not. It was this exact disease, the same nondeterminism, in a different organ: a model used as a comparator, treated as if it were deterministic when it is not. So this time I actually cured it, at the root.
+
+The extractor that turns a paper into structured claims now caches its output against a hash of the input text, plus the model and the prompt that produced it. Identical text extracts to identical claims, by construction, so the same paper compared against itself can no longer produce a phantom contradiction. When the model or the prompt changes, the hash changes and the cache correctly throws the old extraction away. The nondeterminism did not get smarter, it got removed from the path where it was doing damage.
+
+I also tore out the matcher that decided whether two commitments were "the same." It used to compare them with a thirty-character sliding window over the text, which missed reordered wording and cried "dropped commitment" at things that were merely rephrased. It now matches on how many words two commitments share, which is boring and deterministic and far harder to fool.
+
+The tempting move, the one I want to flag because I think it is the more interesting decision, was to make these checks smarter by dropping in an embedding model or a natural-language-inference classifier to judge whether two sentences mean the same thing. I deliberately did not. The entire job of these checks is to be stable. Putting a nondeterministic model inside a stability check would reintroduce the exact disease I was curing. Determinism where you can, the model only where you genuinely must. The matcher is dumber than an embedding model, and on this check that is the feature, not the compromise.
+
+## Reproducible is still not the same as correct
+
+Here is the part I was most honest about in the last version of this piece, and the part I have now started to actually address.
+
+A sampled score that reports its own band is a better number. It can still be a confidently wrong number. Self-agreement is not agreement with a human expert. My scorer now tells you how much it agrees with itself, which is real, but a panel of personas all running on one underlying model can be reliably, reproducibly, three-times-over wrong in the same direction.
+
+So I built the thing that lets me find out: a calibration harness. It records a human reviewer's score for a draft next to the model's score and its band, and it reports four things. How far apart they are on average. Whether the model systematically over-scores or under-scores. Whether the two move together as drafts get better or worse. And how often the human's score actually lands inside the band the model claimed. That last one is the honest test of the whole uncertainty story: if the model says a paper is 0.44 give or take a little and a reviewer says 0.55, the band was not humble, it was wrong, and I want that failure to show up as a number.
+
+The harness is built and tested. It is also empty. It is only as good as the labels I feed it, and getting real reviewer judgments on regulatory drafts is slow, expensive, expert work. But the measurement now exists, which means "is this score valid, not just repeatable?" has stopped being a rhetorical flourish at the end of a blog post and become a metric I can watch climb or fall.
+
+## What is still not done
+
+Two honest gaps remain, and I would rather name them than imply this is finished.
+
+I need the labels. A calibration harness with no data in it tells you exactly nothing, and filling it is the unglamorous, non-automatable part: sitting real reviewers down with real drafts. That is the next real piece of work, and no amount of clever engineering substitutes for it.
+
+And the panel is still one model family wearing three hats. The PRA, the Bank of England, and the FCA are three prompts on the same underlying model, so when it is biased they tend to be biased together, and a panel gets its reliability from genuinely different model families, not different instructions. The hook to route one of those judges to a different family is now in the code, switched off until I wire up the second model.
+
+None of this is the part that demos well. But the through-line of the whole exercise is simple, and I think it generalises past compliance: a number you can trust is one that is repeatable, honest about its own uncertainty, and checked against reality. I spent a week proud of the first property, mistaking it for all three. The work since has been earning the other two, and most of it has looked less like machine learning and more like measurement discipline. The model was the easy part. Getting the model to tell me how much to trust it is the job.
+
+#AIEngineering #AgenticAI #Compliance #GRC #LLM #LLMEvaluation #Calibration #Reproducibility #BuildInPublic #RegTech
