@@ -1,5 +1,5 @@
 ---
-import { getCollection, getEntry } from 'astro:content';
+import { getCollection } from 'astro:content';
 import BaseLayout from '../../components/BaseLayout.astro';
 import ReadingProgress from '../../components/ReadingProgress.astro';
 import TranslateToggle from '../../components/TranslateToggle.astro';
@@ -27,10 +27,17 @@ const { paper } = Astro.props;
 const { Content } = await paper.render();
 
 // Try to load the Korean sidecar. If absent, the toggle won't render.
-let koEntry = null;
-try {
-  koEntry = await getEntry('research', `ko/${paper.slug}`);
-} catch { /* no Korean version yet */ }
+//
+// Looked up via getCollection rather than getEntry on purpose: getEntry logs
+// "Entry research -> ko/<slug> was not found" at build time for every article
+// without a translation, and because it returns undefined rather than throwing,
+// a try/catch cannot suppress it. That turned a normal state (an article whose
+// translation has not been written yet) into recurring build noise. Filtering a
+// collection we already load is silent and gives the same answer.
+const koEntries = await getCollection('research', ({ id }) => id.startsWith('ko/'));
+const koEntry = koEntries.find(
+  (entry) => entry.id === `ko/${paper.slug}` || entry.id.replace(/\.mdx?$/, '') === `ko/${paper.slug}`
+) ?? null;
 const KoContent = koEntry ? (await koEntry.render()).Content : null;
 
 const dateStr = paper.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
