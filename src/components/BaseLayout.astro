@@ -11,11 +11,17 @@ export interface Props {
   // grids, the buildlog, and the homepage cards opt in to wide (max-w-6xl
   // ≈ 1152px) so they can breathe on desktop instead of feeling boxed in.
   wide?: boolean;
+  // Keep the page out of search results. Draft posts and research still
+  // build and deploy at their final URLs until the Monday publish cron
+  // flips them, so their routes set this; the sitemap filter in
+  // astro.config.mjs drops the same URLs.
+  noindex?: boolean;
 }
 const {
   title,
   description = 'Build-in-public hub for Neural Bridge and other projects.',
   wide = false,
+  noindex = false,
 } = Astro.props;
 
 const widthClass = wide ? 'max-w-6xl' : 'max-w-2xl';
@@ -28,6 +34,7 @@ const widthClass = wide ? 'max-w-6xl' : 'max-w-2xl';
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
     <link rel="alternate" type="application/rss+xml" title="neural-bridge.dev" href="/rss.xml" />
 
     <!-- Fonts: Fraunces (variable, opsz axis), Albert Sans, JetBrains Mono -->
