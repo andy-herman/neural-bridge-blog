@@ -1,0 +1,95 @@
+---
+title: "It Learned How I Sound, Not What I Know"
+description: "I fine-tuned a small model on my compliance notes and it fabricated more, not less. What worked was the opposite of training: a library, citations, and a model that says when the answer is not there."
+pubDate: 2026-09-25
+project: gemma-grc
+tags: ["gemma-grc", "small-models", "rag", "fine-tuning", "evaluation", "grc", "compliance"]
+draft: false
+---
+
+The first model I trained on my compliance notes told me that DORA stands for DevOps Relapse Analytics.
+
+It said it without hesitation, in a clean, slightly formal register I recognized at once, because it was mine. Then it cited a web address that does not exist.
+
+That was a one-billion-parameter model after ninety seconds of training on a few dozen examples I had written by hand, so I did not take it personally. Then I did it properly. Fifteen hundred question-and-answer pairs generated from my own notes. A frozen test set the model never saw in training. A judge from a different model family grading every answer, and a separate count of how often an answer contained something invented.
+
+It got worse.
+
+Before training, the small model invented something in one answer in five. After training on my notes, it invented something in nearly half of them: 48%. A model four times the size moved the same way, less dramatically, from 26% to 36%.
+
+What had it learned? My voice. The citation-heavy, unhedged way a compliance professional writes about material they know well. What a model that small could not absorb was the material itself, so it did what anyone does when they have the manner and not the substance. It filled the gaps with specifics that sounded right.
+
+An untuned model hedges. A tuned one asserts. In regulatory work the second failure is the dangerous one, because it is the persuasive one.
+
+I later learned I had replicated a published result by accident. Researchers at Google and the Technion showed in 2024 that when you fine-tune a model on facts it did not already know, it learns them slowly, and as it learns them it becomes more prone to hallucinate.
+
+This is not a laboratory problem. In June the inspectorate at the MHRA, the UK's medicines regulator, published a post about AI-drafted inspection responses. It had seen responses "containing references to MHRA guidance that doesn't exist," and review time had gone from around four hours to more than twenty.
+
+## The fix was to stop teaching it
+
+The project is called Gemma GRC. It is Google's small open Gemma model, a search index over about fifteen hundred passages of my notes and course material, and a Mac Mini on my desk. When I use it, nothing leaves the machine.
+
+What worked was the opposite of training. I left the model exactly as Google shipped it and gave it a library instead. Before it answers, a search step pulls the passages most likely to hold the answer. The model is told to answer only from those passages, to cite each one by number, and to say plainly when the answer is not there.
+
+Answer quality rose by almost a full point on a five-point scale, the largest and most reliable effect in the whole project, and fabrication fell with it. When I then fine-tuned the model on top of that setup, it added four hundredths of a point. Well inside the noise.
+
+Retrieval is not a cure, and I would not trust anyone who sold it as one. Stanford researchers tested commercial legal research tools built this way and still found hallucinations on 17% to 33% of their test queries. What retrieval gives you is a claim you can check. That turns out to be most of the value.
+
+The biggest single gain came from a component I had been ignoring. The search step runs on its own small model, one that turns passages into numbers so that similar ideas land near each other. It is about 120 times smaller than the language model. I fine-tuned it on my material for nine minutes, and the chance of the right passage landing in the top four went from 71% to 79%.
+
+I had spent four experiments tuning the famous component. The one that was failing was the librarian.
+
+## What a model that knows nothing is good for
+
+"An AI that only knows your notes" sounds like a lesser thing. For my work it is the more useful one. When Thomson Reuters surveyed 1,816 professionals this spring, compliance and risk among them, 96% said AI must protect confidential data and 94% said its outputs must be grounded in authoritative content. A small model that reads your own library, and cites it, is one honest way to meet both.
+
+**Memory with receipts.** I can ask what I concluded about incident reporting timelines across DORA and NIS2 and get an answer in seconds, each sentence pointing back to the note it came from. The answer is only as good as my notes. But I can check it in the time it takes to read the source.
+
+**A map of what I never wrote down.** I did not expect this one. When the passages do not contain the answer, the model says so, and names the kind of document that probably would. Each of those refusals marks something I know but never documented. In a compliance function that is not abstract. Knowledge that lives in one person's head is key-person risk, and supervisors ask about it. The refusals became a to-do list.
+
+**No new third party.** The documents compliance professionals most need help with are often the ones least suited to a public chatbot, and EU financial services has a sharper version of the point. Under DORA, a cloud AI service you use to draft a reply to your supervisor is itself an ICT third-party arrangement, and it belongs in the register of information your supervisor already receives from you. A model on hardware you already control adds nothing to the register.
+
+Local tells you where a model runs. It tells you nothing about what it was fed. A privacy filter looks for personal data, but confidentiality usually lives in the label at the top of a document, and the pipeline that feeds the model has to read that label. The gate matters more than the model, and it is the part most people skip.
+
+**The first day of an information request.** This is where I am taking it next. When a regulator's request lands, the first day is mostly archaeology: what have we said before, where did we say it, and is it still true? A grounded model turns that into a first draft in which every claim carries its source. The MHRA's standard for responses is the right one: accurate, verifiable, and signed off by someone accountable. Citations make the checking fast. The signature is still yours.
+
+It is a four-billion-parameter model and it has a small model's limits. It will not interpret an ambiguous article or predict how a supervisor will read your answer. That is still judgment, and mostly mine. What it does is make my own record searchable, and honest about where it runs out.
+
+## The model is the replaceable part
+
+I built the version I use on Gemma 3, a model Google had already replaced by the time I started. Gemma 4 arrived this spring under a plain Apache 2.0 license, and since I shipped in August nearly every major lab has released something new.
+
+If I had poured my knowledge into the weights, every one of those releases would mean retraining and revalidating from scratch. Because the knowledge lives in the library, moving to a new model is an afternoon of work followed by a rerun of the test set. It is next on my list.
+
+That changes where a professional should put the effort. The model depreciates. The notes compound. What lasts is the corpus and the question set you hold every model to, along with the written record of how you tested it, which is the part an auditor will ask to see. The model is something you rent until a better one arrives.
+
+## Test it like a control
+
+The hardest problem in this project was never the model. It was knowing whether anything had improved.
+
+I used a small AI judge to filter the training data. It scored almost everything 4.99 out of 5 and rejected 29 of 2,228 examples. Anyone who has tested a control knows the feeling. A control that never fires tells you very little about the population. Usually it is telling you something about the control.
+
+The next judge failed more quietly. Shown random passages, it correctly said none of them answered the question, a perfect score. Shown each question next to the exact passage it had been written from, it said yes only 38% of the time, once when the passage stated the answer almost word for word. Had I tested it only with samples that should fail, I would have signed it off. Even repaired, it misses about one relevant passage in five, so I read its numbers as a floor.
+
+Nobody is going to do this part for us. In April the Federal Reserve, the OCC and the FDIC replaced SR 11-7, the model risk guidance US banks have worked to since 2011, and wrote generative and agentic AI out of the new guidance's scope. For now, testing these systems is our job.
+
+Compliance professionals are better prepared for it than we tend to think. We already test controls with samples that should pass and samples that should fail, and we freeze the population before we sample it. Nobody in an audit trusts a reading until someone has checked the instrument. Evaluating an AI system is that same discipline pointed at a new kind of control. In my project, every conclusion that reversed, reversed because I checked an instrument, and the check always cost less than the fix I was about to build.
+
+## A test you can run on Monday
+
+Take any AI tool you are thinking of using for regulatory work and ask it a question whose answer sits in a document it cannot see. Make it specific. A reporting deadline from your own policy, a threshold from an internal standard, the date of a commitment you made to a supervisor.
+
+If it answers fluently, you have learned the most important thing about it. It will do the same thing on the day it matters, in front of someone who can check.
+
+If it tells you it cannot find the answer, keep that one.
+
+It has never again told me DORA stands for DevOps Relapse Analytics. It still does not know what DORA stands for. It knows where I wrote it down, and it shows me.
+
+I set out to build a model that knew what I know. I have ended up suspecting that more of my own expertise than I would like to admit works the same way: knowing where the answer lives, and saying so when it is not there.
+
+
+---
+
+Gemma GRC has a [project page](/projects/gemma-grc) on this site. The full lab write-up, with every run, its confidence interval and the instruments that failed, is the working paper [When the Instrument Is the Bottleneck](/research/when-the-instrument-is-the-bottleneck).
+
+#GRC #Compliance #AIEngineering #SmallLanguageModels #RAG #LLMEvaluation #BuildInPublic

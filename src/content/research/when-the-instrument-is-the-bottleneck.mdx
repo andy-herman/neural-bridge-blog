@@ -1,0 +1,180 @@
+---
+title: "When the Instrument Is the Bottleneck"
+description: "Ten experiments building a small, private compliance assistant on a Mac Mini. Retrieval beat fine-tuning, tuning the search model beat tuning the language model, and every conclusion that reversed did so because I checked a measuring instrument."
+abstract: "I built a governance, risk and compliance assistant from small open-weight models and a corpus drawn from my own notes, and ran ten controlled experiments over two weeks, all on a Mac Mini. Generator fine-tuning never improved the system. Closed-book, it more than doubled the fabrication rate of a 1B model, from 20% to 48%. Layered on retrieval, it added +0.04 on a five-point scale, with a 95% confidence interval of −0.34 to +0.44. Retrieval raised answer quality by 0.86 (+0.48 to +1.24). Fine-tuning the retriever's 33M-parameter embedding model for nine minutes lifted recall@8 from 0.809 to 0.861. The more general finding is methodological. Five measurement instruments returned confident, plausible and wrong numbers, and four substantive conclusions reversed once the instruments were checked. At this scale the binding constraint was not model capability or data volume. It was the ability to tell whether anything had improved. The paper ends with the limitations a later audit found in my own evaluation, including two that narrow what the fine-tuning null result can claim."
+pubDate: "2026-09-25"
+topic: "development-playbooks"
+tags: ["gemma-grc", "evaluation", "llm-as-judge", "rag", "fine-tuning", "retrieval", "small-models", "grc", "compliance"]
+status: "working-paper"
+version: "v1.0"
+draft: false
+---
+
+The first model I fine-tuned on my compliance notes expanded DORA as "DevOps Relapse Analytics" and then cited a web address that does not exist. That was ninety seconds of training on a few dozen hand-written examples, and it set the agenda for everything after it. The model had learned how my notes sound. Whether it had learned anything they say was a question I could only answer by measuring, and measuring turned out to be the hard part.
+
+This is the full record: ten experiments over two weeks, on a Mac Mini M4 with 24 GB of memory, with all training, generation, judging and inference on the device.
+
+## The question
+
+The practical goal was an assistant for the first day of a regulator's information request. It had to be grounded in a governed library, able to draft and frame a response, and checkable. The testable question underneath was narrower:
+
+> Does fine-tuning a small open-weight model on domain material improve GRC question answering, relative to retrieval over the same material?
+
+My opening design note asserted a prior: fine-tune for form, retrieve for facts. That assumption was worth testing rather than inheriting, and testing it sharpened it considerably.
+
+## The system
+
+Notes come from an allowlist of folders in my Obsidian vault and pass a local gate before anything else. Notes marked private are skipped, and structural personal data (email addresses, phone numbers and the like) is redacted by pattern. Notes are split on headings into chunks of roughly 500 words. The gate has since become fail-closed; see the postscript.
+
+A teacher model writes question-answer pairs for each chunk. An early cloud teacher hit its free-tier quota within a day. Generation moved to Gemma 3 12B running locally, which removed the quota and keeps every chunk on the machine. Pairs are deduplicated, length-bounded and filtered by an LLM judge.
+
+An audit on day five found the original allowlist was missing roughly 200,000 words of relevant material elsewhere in the vault, including a full information-assurance course and long-form regulatory analysis. Of 56 vault files that mention OWASP, 55 were outside the corpus.
+
+| Corpus | Day 1 | Day 5 | Final |
+| --- | --- | --- | --- |
+| Notes | 198 | 457 | 457 |
+| Chunks | 643 | 1,472 | 1,472 |
+| Generated pairs | 2,508 | 2,508 | 5,495 |
+| Chunk coverage | 633 of 643 | 633 of 1,472 | 1,429 of 1,472 |
+
+The day-five column is the interesting one. Expanding the corpus without regenerating pairs left more than half of it unprocessed, and nobody noticed until an unrelated prompt fix forced a regeneration.
+
+### Evaluation design
+
+The held-out question set was frozen before any training. It was split at the level of the note rather than the pair, so the model never trains on a sibling question from an evaluation note.
+
+The judge comes from a different model family than both the student and the teachers. Two metrics are tracked: mean answer quality against a reference, and a separate yes-or-no fabrication flag, because for regulator-facing work the second matters more. Retrieval is measured on its own as recall@k, which is deterministic. Every end-to-end comparison carries a bootstrap confidence interval.
+
+## The experiments
+
+| Run | What | Verdict |
+| --- | --- | --- |
+| 001 | First LoRA fine-tune, a few dozen hand-written pairs, 90 seconds. Learned the register, then expanded DORA as "DevOps Relapse Analytics" and invented a URL | learning artifact |
+| 002 | 1B model tuned on 1,507 domain pairs. Lost to its own base model and more than doubled fabrication | failed gate |
+| 003 | 4B model, same data. Beat its own base on the mean; fabrication still rose | not shipped |
+| 004 | Retrieval-format training with abstention examples. Diverged to NaN and kept checkpointing corrupted weights for another thousand iterations | void |
+| 005 | The same experiment, repaired. A clean run. Tuning added nothing measurable over retrieval | not shipped |
+| 006 | Fine-tuned the **retriever** instead: 1,549 contrastive pairs, 33M parameters, nine minutes | **shipped** |
+| 007 | A cross-encoder reranker over the top 20 passages. Cost six points at k=4 in two separately trained versions | rejected |
+| 008 | Chunking sweep at 250, 500 and 900 words. The existing configuration was already best | no change |
+| 009 | Rewrote question generation to remove questions that only make sense while holding the source. Defect fixed, stated goal not met | partial |
+| 010 | Retriever retrained on 2.8 times the pairs. Gained 1.9 points at k=4, which is three questions | shipped; gain not established |
+
+## Results
+
+| Configuration | Mean | 95% CI | Fabrication |
+| --- | --- | --- | --- |
+| 1B, closed-book | 2.78 | 2.57 to 2.96 | 20% |
+| 1B fine-tuned | 2.60 | 2.36 to 2.80 | **48%** |
+| 4B, closed-book | 2.64 | 2.38 to 2.86 | 26% |
+| 4B fine-tuned | 2.74 | 2.54 to 2.92 | 36% |
+| **4B + retrieval, untuned** | **3.50** | 3.20 to 3.78 | **12%** |
+| 4B fine-tuned + retrieval | 3.54 | 3.28 to 3.82 | 14% |
+
+Two comparisons carry the argument:
+- **Retrieval against closed-book at 4B: +0.86** (+0.48 to +1.24). Real and large.
+- **Tuned against untuned, both with retrieval: +0.04** (−0.34 to +0.44). Indistinguishable from zero on this evaluation.
+
+**Finding 1. Fine-tuning made a compliance model more dangerous.** Closed-book tuning taught the confident, citation-bearing register of my notes. A 1B model cannot hold the facts underneath, so the learned specificity came out as invented specifics. An untuned model hedges; a tuned one asserts. In compliance the tuned failure is worse precisely because it is more persuasive. The published literature predicts this: models fine-tuned on facts they did not already know become more prone to hallucinate as they learn them.
+
+**Finding 2. The prompt had already won the battle tuning was commissioned to fight.** The retrieval-format experiment predicted that tuning would install citation discipline. The untuned model with retrieval already cited in 48 of 50 answers, because the prompt required it. Tuning's measurable residue was:
+- correct citation *format*;
+- four times as many abstentions;
+- terser answers.
+
+These are real trained behaviours, with no effect on outcomes.
+
+### The one that worked
+
+Recall analysis showed that the general-purpose embedding model was the weak half of the retriever. Dense-only recall@4 was 0.503, against 0.717 for the hybrid, with BM25 carrying the difference. Contrastive fine-tuning on 1,549 in-domain pairs took nine minutes.
+
+| k | Stock BGE | Vault-tuned | Change |
+| --- | --- | --- | --- |
+| 4 | 0.711 | **0.786** | +7.5 points |
+| 8 | 0.809 | **0.861** | +5.2 points |
+| 12 | 0.844 | **0.890** | +4.6 points |
+
+The gain held on queries rewritten into terse practitioner style, so it is not overfitting to synthetic phrasing.
+
+**Finding 3. Tune the component that is failing.** Generator tuning moved a noisy end-to-end score by +0.04. Retriever tuning moved a noise-free metric by five to nine points, using a model 120 times smaller and nine minutes of compute. I applied the famous technique to the wrong component for four experiments.
+
+## The instruments
+
+Five measurement instruments produced confident, plausible, wrong numbers.
+
+1. **The rubber-stamp judge.** The filtering judge scored 4.99 out of 5 on average and rejected 29 of 2,228 pairs. A filter that accepts 98.7% of its inputs measures nothing. Injecting known defects showed it could not discriminate, and a rewritten rubric detected generic filler at −3.0 against controls.
+2. **The wrong tokenizer call.** A length audit reported median prompts of 77 tokens when the true figure was 1,452. The bad reading nearly hid the cause of a training failure.
+3. **The missing embedding prefix.** BGE models are trained with an instruction prefix on queries but not on passages, and omitting it silently depressed ranking. The end-to-end evaluation could not see the fix; the deterministic recall metric resolved it in three minutes.
+4. **The noise floor.** Several differences I had treated as findings sat inside a band of plus or minus 0.3 once confidence intervals were computed. Only two end-to-end comparisons in the whole project are statistically real.
+5. **The one-sided control.** A relevance judge returned a perfect negative control (no false positives on random passages) and a catastrophic positive control. Asked about each question paired with its own gold passage, it said yes 38% of the time, including once when the passage stated the answer almost verbatim. Its first output would have understated retrieval quality by about a third.
+
+**Finding 4. A control must be able to fail in both directions.** A calibration that used only negative controls passed a badly broken judge. Both directions have to be exercised, and in every case here that took minutes.
+
+### Four wrong hypotheses
+
+| Hypothesis | Disproved by | Cost of check |
+| --- | --- | --- |
+| Sibling chunks poisoning hard negatives | The fix touched 9 rows of 6,196 and changed nothing | 30 seconds |
+| Chunking is the ceiling | 500-word chunks were already best at every operating k | about an hour |
+| Labels understate recall | Usable-context recall came in *below* strict recall, not above | about 20 minutes |
+| Document-referencing questions break the judge's control | Those questions eliminated; control unchanged | about 30 minutes |
+
+The last column is the point. In every case the diagnostic was an order of magnitude cheaper than the remedy I was contemplating.
+
+### A failure worth documenting
+
+One training run diverged to NaN between iterations 500 and 750, then kept checkpointing corrupted weights for another thousand iterations. The cause was four examples out of 1,472 whose prompts exceeded the maximum sequence length.
+
+The mechanism is in the trainer:
+- Examples are sorted by length before batching, so the over-length examples land in the same batches.
+- With the prompt masked out of the loss, an example truncated inside its prompt contributes no loss tokens.
+- A batch made only of such examples divides zero by zero.
+
+A 0.27% data defect destroyed the run, and the symptom pointed at the learning rate or numeric precision rather than at the data.
+
+A related trap: the retriever's training step was first benchmarked at 54 seconds and, on an idle machine, took 2.8 seconds. The first number would have justified abandoning the approach.
+
+## Limitations
+
+- **Synthetic evaluation.** A teacher model generated the questions from my notes. They are disjoint from training at the note level, so this is not leakage, but they are friendlier than real queries.
+- **Reference answers share the pipeline.** The ground truth came from the same generator as the training data, so the evaluation rewards agreement with the teacher rather than correctness in the world.
+- **Single-gold labels.** A question's correct passage is simply the chunk it was generated from. Other chunks often answer it as well, which distorts both the training signal and the measurement.
+- **Judge ceiling.** The best calibrated relevance judge scores 0.78 on its own positive control, so usable-context recall is capped near that and should be read as a floor.
+- **Sample size.** End-to-end evaluation used 50 questions. Working back from the intervals above, the smallest difference that sample can reliably detect is about 0.53 points; detecting 0.2 would take roughly 360 questions.
+- **The measured configuration is not the shipped one.** The end-to-end numbers were measured with four retrieved passages on the day-one corpus, before the retriever was tuned. The shipped system reads eight passages over the expanded corpus with the tuned retriever, and has not yet been re-measured end to end.
+- **The fine-tuning null result is narrower than it looks.** The retrieval-format fine-tune trained on three-passage contexts under a 2,048-token cap, while inference reads eight passages. Its +0.04 describes that setup, and its interval still allows a gain of up to about 0.4.
+- **Scope.** The conclusions hold for a corpus of about 1,500 chunks and 1B to 4B models on consumer hardware, not for fine-tuning at frontier scale.
+
+## Implications
+
+The architecture the evidence supports is narrower than my original plan:
+- **Facts belong in governed retrieval,** with citations and access control, not in weights. Weights have no permissions model, cannot cite, and cannot be updated when a regulation changes.
+- **A reviewer's confidence comes from following a citation** into the corpus, not from a model that appears to know.
+- **Prompting should be exhausted before training is attempted.** Here, the prompt achieved what training was commissioned to install.
+- **The governance artifact is the evaluation record.** The frozen question set, the documented judge and the run notebook together are what make a system like this defensible in a regulated process.
+
+Fine-tuning keeps one plausible niche that this project has not tested: document-level drafting, where house style may exceed what a prompt can hold. That is a different task from question answering, and it needs its own evaluation.
+
+## Conclusion
+
+At this scale, measurement infrastructure was the bottleneck, not model capability. Every substantive conclusion in this project changed when an instrument was validated, and the validations were consistently cheaper than the work they redirected. The discipline that produced the results is one a compliance professional already owns: run the control sample before believing the reading.
+
+## Postscript: the gate (September 2026)
+
+Local tells you where a model runs, not what it was fed. The ingestion gate is now fail-closed. A note never enters the corpus if it has any of these:
+- a classification label other than public;
+- a private or confidential flag or tag;
+- a handling banner.
+
+Windows line endings or malformed frontmatter cannot open the gate. Every chunk carries a provenance class, and only public text and my own writing may leave the machine or train anything.
+
+Chunk IDs are now content hashes, so a re-ingest can no longer silently re-point evaluation labels. The search index is stamped with the corpus and the model that built it, and refuses to load against anything else. Twenty-six tests cover this layer. Turning the classification check off makes six of them fail, which is how I know they test it.
+
+Next comes an evaluation set large enough to see small effects:
+- 360 or more questions;
+- several correct passages per question;
+- claim-level checking by a judge panel validated against my own labels.
+
+After that, an A/B against Gemma 4 E4B, and primary public regulatory text in the corpus.
+
+#AIEngineering #LLMEvaluation #LLMAsJudge #RAG #FineTuning #SmallLanguageModels #GRC #Compliance #BuildInPublic

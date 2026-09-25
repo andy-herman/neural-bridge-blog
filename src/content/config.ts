@@ -66,6 +66,7 @@ const buildlog = defineCollection({
       'neural-bridge',
       'neural-bridge-blog',
       'seoul-eland-digest',
+      'gemma-grc',
       'cross-cutting',
     ]).default('neural-bridge'),
     links: z.array(z.object({

@@ -1,0 +1,85 @@
+---
+title: "Don't answer the regulator from a blank page"
+description: "Reusing a past compliance answer is an obvious win and a quiet hazard. Here is how I built an RFI reuse engine that reuses safely, with a temporal staleness guardrail that runs on an independent model and fails closed."
+pubDate: 2026-09-25
+tags: ["neural-bridge", "regulatory-ai", "rag", "guardrails", "build-in-public"]
+draft: false
+---
+
+When a regulator sends a Request for Information, the honest truth is that you have almost certainly answered something adjacent before. A supervisor asks how you classify major incidents, or how your board oversees operational resilience, and somewhere on disk is a reviewed answer to a near-identical question from last quarter. Yet most compliance workflows re-derive it from scratch, inconsistently, every time.
+
+So the feature looks obvious: match the new question against a library of previously approved answers, and offer the closest one back. I built exactly that into Bellwether (the regulatory-compliance copilot I have been writing about), and the matching part was the easy 20%. The interesting 80% is that **reuse is quietly dangerous**, and in a supervisor-facing setting the failure mode is expensive.
+
+## The year-old org chart
+
+Here is the hazard. You reuse an approved answer about your governance arrangements. It is well written, it passed review, it is a HIGH-confidence match. It is also nine months old, and in month four you reorganised. The named senior executive is gone. The committee structure changed. You have just resubmitted a confidently wrong answer to your regulator, and "the AI reused an old answer" is not a defence anyone wants to give.
+
+A soft prompt line that says "prefer recent sources" does not catch this. Nothing dates a specific claim. Nothing blocks reuse when a real-world event, not a clock, invalidated it. That gap is the whole build.
+
+## The shape of the fix
+
+Two ideas do most of the work.
+
+![Flowchart of the RFI reuse pipeline, from incoming RFI through match and route to the staleness guardrail and a human confirm gate](/images/rfi-reuse/diagram-pipeline.png)
+*The pipeline. Match and route first; only a reuse candidate ever reaches the staleness guardrail, and every path ends at a human confirm gate.*
+
+**First, not everything ages at the same rate.** A statement of your control methodology is good for a year. An org chart is good until the next reorg. An incident count is good for exactly one reporting period. So instead of a single "one year" rule (too strict for policy, way too lax for org structure), each answer is classified into a volatility class with its own time-to-live and its own half-life decay curve. Governance and point-in-time metrics *always* get a second look, because they change on events, not birthdays.
+
+**Second, and this is the load-bearing one: nothing grades its own work.** The check that asks "is this prior answer still true?" runs on a *different model family* than the one that drafts. LLM judges have a well-documented self-preference bias; a same-family model checking its own draft's freshness is the exact failure the research describes. So the freshness check is an independent verifier: it pulls the current source of truth from the corpus and asks, claim by claim, whether the facts still support the old answer. Contradictions get flagged as stale. Things it cannot verify get flagged as *unverified* rather than fabricated as stale, which matters, because a compliance reviewer needs to know the difference.
+
+![Flowchart of the two-stage guardrail: a deterministic age gate, then an independent-model re-grounding check, with fail-closed and unverified-not-stale branches](/images/rfi-reuse/diagram-guardrail.png)
+*Inside the guardrail. A cheap deterministic age gate decides only whether to spend the expensive check; the check itself runs on a different model family. A merely-absent fact is "unverified", never "stale", and a missing source of truth fails closed.*
+
+Here is that whole chain firing on one real answer:
+
+![Screenshot of the reuse tab: a 100 percent match to a prior answer, with the staleness guardrail flagging that the named senior executive has changed](/images/rfi-reuse/reuse-stale-catch.png)
+*The hazard, caught. A 100% match to a prior approved answer, flagged before it ships: the guardrail re-grounded against the current corpus and found the accountable executive had changed from Jane Whitmore to David Chen, with the reasoning attached for the reviewer.*
+
+## Ship advisory, gate automation on a number
+
+The tempting version of this auto-regenerates the stale claims and hands back a clean answer. I did not ship that, on purpose.
+
+The guardrail is **advisory**. It flags, it explains, and it defers to the human. It does not auto-regenerate, because auto-regeneration is only as trustworthy as the calibration behind it, and when I first shipped this, that calibration did not exist: the temporal thresholds were honest engineering hypotheses, not measured constants, and the doc said so in as many words. So I went and built the calibration set. It cleared the launch gate I had written down (catch stale answers at least 85% of the time, reuse a stale one less than 5%), and I still did not flip on auto-regeneration, for a reason the numbers themselves make clear in the next section. When the guardrail cannot reach a source of truth at all, it does not guess; it **fails closed** and tells you to verify manually.
+
+This is the pattern I keep coming back to across these systems: the safe first ship is the one that surfaces a judgement to a human with its reasoning attached, and every automation after that is gated on a metric, not a launch date. A false-positive reuse silently ships a wrong compliance answer; a missed reuse only costs analyst time. Given that asymmetry, you tune conservatively and you keep the human in the loop.
+
+## The test set that tried to embarrass it
+
+A guardrail you have not tried to break is a guardrail you do not understand. So the calibration set is not just a pile of labelled examples, it is three tiers, each with a different job.
+
+I built it around a fictional firm, GShoe, so the whole dataset is fully specified and shareable. Every case is a prior approved answer with a gold fresh-or-stale label and a documented reason, scored against a current source of truth. And it is graded by the *other* model family: the answers came out of a Claude pipeline, so GPT-4.1 does the grading, because a same-family judge shares exactly the blind spots you are trying to catch.
+
+- The **clean** tier is clear contrasts, to confirm it catches the obvious stale answer.
+- The **adversarial** tier is built to make it over-react: immaterial drift (412 clients became 415), a version number that ticked with no change of substance, a job title reworded for the same person, a fact the source of truth simply does not mention. Every correct answer here is the guardrail choosing *not* to flag.
+- The **borderline** tier is the genuinely ambiguous middle: a bounded claim that still holds ("under four hours" when the real number moved from 4.0 to 3.5) versus a bound that broke ("no more than one incident" when there were two); a precise figure that drifted; a commitment that was delivered versus one that quietly slipped.
+
+Two things fell out of this that I did not expect.
+
+The adversarial tier caught the guardrail over-flagging. It was blocking reuse on facts it merely could not verify, and on drift too small to matter. Precision on that set was 0.61 before I tightened the rule that an unverified claim never blocks reuse on its own, and 0.92 after. That is a real bug the clean set would never have surfaced.
+
+And the borderline tier produced the result I keep thinking about. Across all 63 labelled answers the guardrail catches 97% of stale answers and reuses a stale one only 3.7% of the time, at 89% flag precision. But when I read the handful it got "wrong", about half were not model mistakes at all. They were cases where the gold label was itself a judgement call, and the model's judgement was arguably the better one (it flagged a review cadence that had changed from annual to semi-annual, which I had labelled fresh). Past a point, "is this answer stale?" has no single correct answer, and a good guardrail should inherit that ambiguity rather than paper over it with false confidence. Which is exactly why it stays advisory: the last few points of precision are contested, and contested calls belong with a human.
+
+The whole thing runs as one command, so a change to the freshness prompt gets scored against all three tiers at once, and the results render in the app itself. That regression loop is the actual deliverable. The number is just today's reading of it.
+
+![Screenshot of the in-app calibration view showing clean, adversarial and borderline tabs with catch, false-fresh and precision metrics](/images/rfi-reuse/calibration-view.png)
+*The calibration view, in the app. Three tiers, each scored, so the regression is something you read rather than take on faith.*
+
+## Is it an agent?
+
+Someone asked me this directly, so let me be honest about it. Not in the autonomous sense. Nothing here decides its own next move. It is a deterministic pipeline (match, route, draft, guard) where code controls the flow and the model is called at fixed, bounded steps. What I did add is a name and a contract: one object that exposes the pipeline with its guardrails enumerated in one place (regime isolation, the overlap-tier router, the temporal check, author-judge independence, the human confirm gate, fail-closed). That is a framing choice made on purpose. It gives a reviewer a single auditable thing to point at, without pretending it has an autonomy it does not have. If I ever want a real agentic loop, that object is the seam to grow it from. But the honest label today is "orchestration with guardrails", and in a regulated setting that is a feature, not a shortfall.
+
+## What is actually running
+
+Being concrete about shipped-versus-roadmap, because build-in-public should not oversell:
+
+**Live now:** the answer library, the match-and-route with a HIGH/MODERATE/LOW overlap tier, a fresh-draft fallback when there is no good match, approve-to-library write-back so the library compounds, an independent cross-family judge, and the **temporal staleness guardrail (advisory)** with editable, hot-reloaded volatility policy. Plus, from this week, the three-tier calibration set with a one-command regression suite, an in-app view of the results, and a named agent facade over the whole pipeline. It is deployed to Cloud Run through a canary pipeline that smoke-tests a no-traffic revision before it ever serves a user.
+
+**On the roadmap, honestly:** a forward-looking guardrail that annotates an answer with already-committed work landing next quarter (genuinely novel; no external precedent, so it gets prototyped behind a flag), extending the same calibration discipline from the staleness check to the overlap-tier thresholds on a broader question-pair set, and a watermark that stops an internal-only fact from leaking into an external answer through reused text.
+
+## The meta-lesson
+
+The reusable idea here is not "add RAG." It is **guardrails as independent verifiers**: the component that proposes reuse never gets to certify its own freshness, a cheap deterministic gate decides only whether to spend an expensive check, the expensive check runs on a different model and fails closed, and a human approves everything before it leaves the building. Every step degrades safely toward "just draft it fresh."
+
+That is a boring architecture. In a regulated setting, boring and auditable is the entire point.
+
+*Written 19 July 2026. Published 25 September 2026.*

@@ -1,0 +1,106 @@
+---
+title: "My assistant was deleting her own rules to make room for a changelog"
+description: "Anthropic cut 80% of Claude Code's system prompt for the Claude 5 models with no measured loss. I went looking for what that meant for my thirteen agents, and found something worse than bloat: a memory system quietly eating the wrong half of itself."
+pubDate: 2026-09-25
+project: neural-bridge
+tags: ["neural-bridge", "claude-5", "context-engineering", "agent-memory", "build-in-public"]
+draft: false
+---
+
+Anthropic published a post in late July with a number in it that should make anyone running an agent system uncomfortable. For the Claude 5 generation models, they removed **over 80% of Claude Code's own system prompt** and measured no loss on coding evaluations.
+
+Not trimmed. Removed. The scaffolding that a very good team wrote to make a weaker model behave turned out to be, for a stronger model, mostly dead weight.
+
+I have thirteen agents running on a Mac Mini in my office. Every one of them is a markdown charter that gets pasted into a prompt. Those charters were written in May, for a model that is now two generations old, in a house style I would describe as *defensive*. Numbered invariants. Explicit style rules. Worked examples of the wrong answer. I wrote them that way because in May, that was the advice, and it worked.
+
+So the obvious move was to go measure the bloat. I ran an audit across the whole fleet.
+
+The bloat was real. My assistant agent, Luna, was shipping about **73,000 characters of preamble on every single turn**, roughly 18,000 tokens before she read a word of what I actually said. Her charter alone is 27KB. And because the daemon re-sends the full prompt on each turn even when resuming a session, turn five of a conversation had five verbatim copies of that charter sitting in the transcript.
+
+That is the story I expected to write. Then the audit turned up something I did not expect, and it is the more useful half of this post.
+
+## The memory was eating the wrong end of itself
+
+Luna keeps a working-memory file in my Obsidian vault, `notes.md`. The daemon injects it into every prompt so that what she learned last week travels into this week. There is a cap, because prompts cannot grow forever:
+
+```python
+LUNA_NOTES_MAX_CHARS = 8000
+
+if len(notes) > LUNA_NOTES_MAX_CHARS:
+    # Keep the most recent end of the file (chronologically newest entries
+    # for an append-style notes file).
+    notes = "[...truncated...]" + notes[-LUNA_NOTES_MAX_CHARS:]
+```
+
+Read that slice again. It keeps the **tail**. That is a perfectly reasonable thing to write if you assume the file is a log, because in a log the newest entries are at the bottom and the newest entries are what matter.
+
+The file was not a log. It had grown to 16,089 characters, and it was organized like a constitution with a changelog stapled to the end:
+
+```
+# Luna's working memory
+## Andy: who he is, working snapshot
+## Andy's standing preferences
+## Andy's voice and rhythm
+## Recurring commitments
+## Open conversation threads
+## Decisions Andy has made that I should honor    <- 16 rulings
+## Open content threads
+## Session log                                    <- append-only changelog
+```
+
+Sixteen thousand characters, an eight thousand character window, and a slice that keeps the bottom. Every turn, for months, the daemon was handing her the session log and throwing away everything above it. The section titled *Decisions Andy has made that I should honor* contains the rules I most wanted her to hold: how to speak Korean to me, that she should never tell me to run git commands by hand, the no-em-dash rule. She had not been reading any of it. She had been reading a list of which pull requests merged in May.
+
+I want to be precise about how bad this is, because it is worse than it sounds. The system did not degrade in a way anyone could see. She still answered. She still sounded like herself, because her charter is separate from her notes. She just quietly stopped honoring decisions I had made, and the only symptom was that she felt a little more generic than she used to, which is exactly the kind of thing you attribute to the model having an off day.
+
+The fix is not a bigger cap. A bigger cap fails later and just as silently. The fix is to make the budget aware of what it is spending on:
+
+```python
+def budget_notes(text, max_chars):
+    """Drop rolling-log sections before durable ones. Preserve document order."""
+```
+
+Durable sections are kept whole. The session log is what gets trimmed, and only after everything else has its space. And when anything is dropped at all, it logs a warning, because the actual defect here was never the arithmetic:
+
+```python
+if dropped:
+    # Never fail silently: a shrinking memory is invisible from the outside.
+    _logger.warning("luna notes.md over budget (%d chars); dropped: %s", ...)
+```
+
+Every layer of that memory stack was written to fail soft. Honcho unreachable, `return ""`. No weekly digest yet, `return ""`. Notes file missing, `return ""`. Each one is a defensible little decision that keeps the daemon from crashing over a missing file. Together they build a system that can lose most of its memory and never once say so. When I went looking, the weekly lessons-learned layer had produced **zero files, ever**. Four thousand characters of designed context, returning an empty string on every turn since May, and no line anywhere in a log to notice it.
+
+If you take one thing from this post: an agent's memory failing open is not a graceful degradation. It is a silent lobotomy. Log the trim.
+
+## Thinking by default means paying for thinking you did not ask for
+
+The second concrete change is smaller and immediate. The Claude 5 models think by default, and effort is now a dial with five positions from `low` to `max`. My daemon was not setting it, which means every turn ran at the default depth, which means "hey, what's on my calendar" was allocated the same reasoning budget as a threat model.
+
+So the fleet now has an effort policy, one line per agent:
+
+```python
+EFFORT_PER_AGENT = {
+    "luna": "low",              # assistant chatter, calendar and inbox lookups
+    "research": "high",         # multi-source synthesis
+    "security-reviewer": "high" # adversarial reasoning is the whole job
+}
+```
+
+The autonomous coding loop I built last month runs at `high`, and it is the only thing in the house that has earned it. Match the depth to the job. Most turns are not hard.
+
+## The part I would rather not write
+
+The audit reported one more number. The last time any agent in the Discord fleet was mentioned was **2026-05-26**, ten weeks ago. Luna was the most-used agent in the system, three hundred and ten calls, and she has not had a conversation since.
+
+The daemon is up. It reconnects, it logs, it holds thirteen bot sessions open. Nobody talks to it.
+
+I did not stop using it because it broke. I stopped because the work moved to other surfaces, and the daemon kept running the way a light stays on in a room you left. Which means that for two months I was maintaining, debugging, and extending a system I was not using, and the memory bug I just spent a thousand words on had no practical effect during the entire period it existed.
+
+The uncomfortable version of the lesson: I was measuring the wrong thing. I have a fleet dashboard that reports agent health, and it was reporting green, because the daemon was alive. Alive is not the same as used. A system that nobody talks to is not healthy, it is a monument.
+
+So the fixes are real and I shipped them, and I would ship them again, because the memory bug is a genuine design error that would bite anyone building this pattern. But the honest headline of this audit is not *my charters got bloated*. It is that the platform got better at exactly the moment I stopped paying attention, and I found out by reading a blog post rather than by using my own tools.
+
+The platform's advice this quarter is to delete things. Delete the rules you wrote for a model that needed them. Delete the context you front-load in case it comes up. Move procedures into skills that load when they are relevant and stay out of the way when they are not.
+
+I would add one to the list. Delete the parts of your system you are not actually using, or start using them. Keeping them running is not free, and it is not neutral, because a green dashboard on an idle system is worse than a red one. It tells you everything is fine, in a room where nobody has spoken for ten weeks.
+
+*Written 1 August 2026. Published 25 September 2026.*
