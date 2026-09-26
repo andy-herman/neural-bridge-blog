@@ -1,0 +1,27 @@
+flowchart TB
+  subgraph BUILD["BUILD TIME · on the Mac, no model involved"]
+    direction LR
+    NOTES["My notes and<br/>course material"] --> GATE{{"Confidentiality<br/>gate, fail-closed"}}
+    GATE -- "clear" --> CHUNK["Chunk,<br/>redact PII"]
+    GATE -- "labelled, flagged<br/>or bannered" --> HELD["Held back,<br/>reason logged"]
+    PUB["Primary public<br/>regulatory sources"] --> PARSE["Fetch and parse,<br/>licence recorded"]
+    CHUNK --> STAMP["Stamp every chunk<br/>provenance, licence,<br/>may-leave, may-train"]
+    PARSE --> STAMP
+    STAMP --> INDEX[("Fingerprinted<br/>index")]
+  end
+  subgraph QUERY["QUERY TIME · no network"]
+    direction LR
+    Q["Question"] --> CHECK{{"Index matches<br/>corpus and model?"}}
+    CHECK -- "no" --> REFUSE["Refuse<br/>to run"]
+    CHECK -- "yes" --> SEARCH["Hybrid search<br/>dense + keyword"]
+    SEARCH --> GEN["Gemma 3 4B<br/>answers only from<br/>the passages"]
+    GEN --> ANS["A citation per claim,<br/>or names what<br/>is missing"]
+  end
+  BUILD == "search the index" ==> QUERY
+
+  classDef gate stroke:{{ACCENT}},stroke-width:2px,fill:{{ACCENT_FILL}};
+  classDef stop stroke:{{MUTED}},stroke-dasharray:4 3,fill:{{MUTED_FILL}},color:{{MUTED}};
+  classDef out stroke:{{ACCENT}},stroke-width:2px;
+  class GATE,CHECK gate;
+  class HELD,REFUSE stop;
+  class ANS out;
