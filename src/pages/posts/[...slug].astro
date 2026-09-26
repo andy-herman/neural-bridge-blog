@@ -28,7 +28,7 @@ const KoContent = koEntry ? (await koEntry.render()).Content : null;
 const dateStr = post.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
 const minutes = readingTime(post.body);
 ---
-<BaseLayout title={`${post.data.title} · neural-bridge.dev`} description={post.data.description}>
+<BaseLayout title={`${post.data.title} · neural-bridge.dev`} description={post.data.description} noindex={post.data.draft}>
   <ReadingProgress />
 
   <article>

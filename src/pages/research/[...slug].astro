@@ -45,7 +45,7 @@ const minutes = readingTime(paper.body);
 const topicLabel = TOPIC_LABELS[paper.data.topic] ?? paper.data.topic;
 const statusLabel = paper.data.status === 'working-paper' ? 'Working Paper' : paper.data.status === 'draft' ? 'Draft' : null;
 ---
-<BaseLayout title={`${paper.data.title} · neural-bridge.dev`} description={paper.data.description}>
+<BaseLayout title={`${paper.data.title} · neural-bridge.dev`} description={paper.data.description} noindex={paper.data.draft}>
   <ReadingProgress />
 
   <article>
