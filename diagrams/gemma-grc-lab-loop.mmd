@@ -1,0 +1,8 @@
+flowchart LR
+  H["Hypothesis first,<br/>one change"] --> R["Run the frozen<br/>question set"]
+  R --> J["Judge from another<br/>model family"]
+  J --> S["Confidence intervals<br/>vs the noise floor"]
+  S -. "run note,<br/>next hypothesis" .-> H
+
+  classDef out stroke:{{ACCENT}},stroke-width:2px;
+  class S out;

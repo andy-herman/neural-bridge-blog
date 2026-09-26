@@ -1,0 +1,31 @@
+flowchart TB
+  subgraph CORPUS["REGULATORY CORPUS · DORA, UK CTP, NIS2"]
+    direction LR
+    SRC["Regulations, guidance,<br/>supervisor statements"] --> PARSE["Parse, skip<br/>exact duplicates"]
+    PARSE --> EMB["Chunk and embed<br/>on the machine"]
+    EMB --> VDB[("Vector store<br/>tagged by regime")]
+  end
+  subgraph RFI["RFI REUSE"]
+    direction TB
+    Q["Regulator request for information"] --> MATCH["Search approved answers, same regime only"]
+    MATCH --> ROUTE{{"Best match?"}}
+    ROUTE -- "none" --> FRESH["Fresh draft from<br/>the corpus, gaps listed"]
+    ROUTE -- "exact or partial" --> AGE{{"Age gate:<br/>volatility class vs TTL"}}
+    AGE -- "within its TTL" --> REUSE["Reuse draft,<br/>unverified claims flagged"]
+    AGE -- "old, event-driven<br/>or undated" --> JUDGE{{"Re-ground on the current<br/>corpus, independent judge"}}
+    JUDGE -- "current or<br/>unverified" --> REUSE
+    JUDGE -- "stale claim, no evidence<br/>or judge error" --> BLOCK["Reuse blocked,<br/>stale claim named"]
+    REUSE --> HUMAN{{"A person confirms:<br/>accurate as of today"}}
+    FRESH --> HUMAN
+    BLOCK --> HUMAN
+    HUMAN -- "approve" --> LIB[("Approved answers,<br/>12-month review-by date")]
+    LIB -. "next request" .-> MATCH
+  end
+  CORPUS == "current regulation" ==> RFI
+
+  classDef gate stroke:{{ACCENT}},stroke-width:2px,fill:{{ACCENT_FILL}};
+  classDef stop stroke:{{MUTED}},stroke-dasharray:4 3,fill:{{MUTED_FILL}},color:{{MUTED}};
+  classDef out stroke:{{ACCENT}},stroke-width:2px;
+  class ROUTE,AGE,JUDGE,HUMAN gate;
+  class BLOCK stop;
+  class LIB out;

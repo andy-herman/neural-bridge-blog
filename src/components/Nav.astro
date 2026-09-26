@@ -1,17 +1,26 @@
 ---
+import { getCollection } from 'astro:content';
+
 export interface Props {
   wide?: boolean;
 }
 const { wide = false } = Astro.props;
 const widthClass = wide ? 'max-w-6xl' : 'max-w-3xl';
 
-const links = [
+// Projects menu: any English project entry with `featured` set, in that order.
+const featuredProjects = (await getCollection('projects', ({ id, data }) => !id.startsWith('ko/') && data.featured !== undefined))
+  .sort((a, b) => (a.data.featured ?? 0) - (b.data.featured ?? 0));
+
+type NavItem = { href: string; label: string; projects?: typeof featuredProjects };
+const links: NavItem[] = [
   { href: '/', label: 'Home' },
+  { href: '/projects', label: 'Projects', projects: featuredProjects },
   { href: '/writing', label: 'Writing' },
   { href: '/buildlog', label: 'Build log' },
   { href: '/agents', label: 'Agents' },
   { href: '/about', label: 'About' },
 ];
+const linkClass = 'text-cream-800 hover:text-cream-950 dark:text-cream-200 dark:hover:text-cream-50 transition-colors whitespace-nowrap';
 ---
 <header class="border-b border-cream-200 dark:border-cream-900 relative">
   <div class={`${widthClass} mx-auto px-6 py-5 flex items-center justify-between gap-3`}>
@@ -25,14 +34,52 @@ const links = [
     </a>
 
     <div class="flex items-center gap-3">
-      <nav class="hidden md:block">
+      <nav class="hidden md:block" aria-label="Main">
         <ul class="flex gap-x-4 text-sm">
-          {links.map(({ href, label }, i) => (
-            <li>
-              <a href={href} class="text-cream-800 hover:text-cream-950 dark:text-cream-200 dark:hover:text-cream-50 transition-colors whitespace-nowrap">
-                <span class="nav-num">{String(i + 1).padStart(2, '0')}</span>{label}
-              </a>
-            </li>
+          {links.map(({ href, label, projects }, i) => (
+            projects && projects.length > 0 ? (
+              <li class="relative group" data-projects-menu>
+                <button
+                  type="button"
+                  class={`${linkClass} inline-flex items-center gap-1`}
+                  aria-haspopup="true"
+                  aria-expanded="false"
+                  aria-controls="projects-menu"
+                  data-projects-toggle
+                >
+                  <span class="nav-num">{String(i + 1).padStart(2, '0')}</span>{label}
+                  <svg class="w-3 h-3 opacity-70 transition-transform group-hover:rotate-180 group-[.is-open]:rotate-180" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <path d="M2.5 4.5 6 8l3.5-3.5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <!-- pt-3 bridges the gap under the button so hover does not drop while moving into the panel -->
+                <div
+                  id="projects-menu"
+                  class="absolute left-1/2 -translate-x-1/2 top-full pt-3 z-50 hidden group-hover:block group-[.is-open]:block"
+                  data-projects-panel
+                >
+                  <ul class="w-80 rounded-md border border-cream-300 dark:border-cream-800 bg-cream-50 dark:bg-cream-900 shadow-xl shadow-cream-950/10 dark:shadow-black/50 py-2">
+                    {projects.map((p) => (
+                      <li>
+                        <a href={`/projects/${p.slug}`} class="block px-4 py-2.5 group/item hover:bg-cream-100 dark:hover:bg-cream-800/60 transition-colors">
+                          <span class="block font-serif text-[15px] font-semibold text-cream-950 dark:text-cream-50 group-hover/item:text-rust-500 transition-colors">{p.data.title}</span>
+                          {p.data.tagline && <span class="block text-xs leading-snug text-cream-800 dark:text-cream-300 mt-0.5 whitespace-normal">{p.data.tagline}</span>}
+                        </a>
+                      </li>
+                    ))}
+                    <li class="border-t border-cream-200 dark:border-cream-800 mt-2 pt-2">
+                      <a href={href} class="block px-4 py-2 font-mono text-[11px] uppercase tracking-wider text-rust-500 hover:text-rust-600">All projects &rarr;</a>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+            ) : (
+              <li>
+                <a href={href} class={linkClass}>
+                  <span class="nav-num">{String(i + 1).padStart(2, '0')}</span>{label}
+                </a>
+              </li>
+            )
           ))}
         </ul>
       </nav>
@@ -61,13 +108,22 @@ const links = [
     </div>
   </div>
 
-  <nav id="mobile-menu" class="hidden md:hidden border-t border-cream-200 dark:border-cream-900 bg-cream-100 dark:bg-cream-950">
+  <nav id="mobile-menu" class="hidden md:hidden border-t border-cream-200 dark:border-cream-900 bg-cream-100 dark:bg-cream-950" aria-label="Main">
     <ul class={`${widthClass} mx-auto px-6 py-4 space-y-3 text-sm`}>
-      {links.map(({ href, label }, i) => (
+      {links.map(({ href, label, projects }, i) => (
         <li>
           <a href={href} class="block text-cream-800 hover:text-cream-950 dark:text-cream-200 dark:hover:text-cream-50 transition-colors">
             <span class="nav-num">{String(i + 1).padStart(2, '0')}</span>{label}
           </a>
+          {projects && projects.length > 0 && (
+            <ul class="mt-2 ml-7 space-y-2 border-l border-cream-300 dark:border-cream-800 pl-3">
+              {projects.map((p) => (
+                <li>
+                  <a href={`/projects/${p.slug}`} class="block text-cream-800 hover:text-rust-500 dark:text-cream-200 transition-colors">{p.data.title}</a>
+                </li>
+              ))}
+            </ul>
+          )}
         </li>
       ))}
     </ul>
@@ -80,5 +136,33 @@ const links = [
   toggle?.addEventListener('click', () => {
     const isHidden = menu?.classList.toggle('hidden');
     toggle.setAttribute('aria-expanded', String(!isHidden));
+  });
+
+  // Projects menu: mouse hover opens it through CSS. Everything else is the
+  // disclosure pattern: click, tap, Enter or Space toggles it (touch screens
+  // have no hover), Escape closes it and returns focus to the button, and it
+  // closes when focus or a click moves outside it.
+  document.querySelectorAll<HTMLElement>('[data-projects-menu]').forEach((root) => {
+    const button = root.querySelector<HTMLButtonElement>('[data-projects-toggle]');
+    const panel = root.querySelector<HTMLElement>('[data-projects-panel]');
+    if (!button || !panel) return;
+    const isOpen = () => root.classList.contains('is-open');
+    const setOpen = (open: boolean) => {
+      root.classList.toggle('is-open', open);
+      button.setAttribute('aria-expanded', String(open));
+    };
+    button.addEventListener('click', () => setOpen(!isOpen()));
+    root.addEventListener('mouseenter', () => button.setAttribute('aria-expanded', 'true'));
+    root.addEventListener('mouseleave', () => button.setAttribute('aria-expanded', String(isOpen())));
+    root.addEventListener('focusout', (e) => {
+      if (!root.contains(e.relatedTarget as Node | null)) setOpen(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || !isOpen()) return;
+      const hadFocus = root.contains(document.activeElement);
+      setOpen(false);
+      if (hadFocus) button.focus();
+    });
+    document.addEventListener('click', (e) => { if (!root.contains(e.target as Node)) setOpen(false); });
   });
 </script>

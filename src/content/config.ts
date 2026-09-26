@@ -23,6 +23,10 @@ const projects = defineCollection({
     repoUrl: z.string().url().optional(),
     siteUrl: z.string().url().optional(),
     started: z.coerce.date(),
+    // Short line shown under the title in the nav's Projects menu.
+    tagline: z.string().optional(),
+    // Set to list the project in the nav's Projects menu; lower sorts first.
+    featured: z.number().int().optional(),
   }),
 });
 
