@@ -1,18 +1,19 @@
 ---
 title: "When the Instrument Is the Bottleneck"
 description: "Ten experiments building a small, private compliance assistant on a Mac Mini. Retrieval beat fine-tuning, tuning the search model beat tuning the language model, and every conclusion that reversed did so because I checked a measuring instrument."
-abstract: "I built a governance, risk and compliance assistant from small open-weight models and a corpus drawn from my own notes, and ran ten controlled experiments over two weeks, all on a Mac Mini. Generator fine-tuning never improved the system. Closed-book, it more than doubled the fabrication rate of a 1B model, from 20% to 48%. Layered on retrieval, it added +0.04 on a five-point scale, with a 95% confidence interval of −0.34 to +0.44. Retrieval raised answer quality by 0.86 (+0.48 to +1.24). Fine-tuning the retriever's 33M-parameter embedding model for nine minutes lifted recall@8 from 0.809 to 0.861. The more general finding is methodological. Five measurement instruments returned confident, plausible and wrong numbers, and four substantive conclusions reversed once the instruments were checked. At this scale the binding constraint was not model capability or data volume. It was the ability to tell whether anything had improved. The paper ends with the limitations a later audit found in my own evaluation, including two that narrow what the fine-tuning null result can claim."
+abstract: "I built a governance, risk and compliance assistant from small open-weight models and a corpus drawn from my own notes, and ran ten controlled experiments over two weeks on a Mac Mini. Generator fine-tuning never improved the system. Closed-book, it more than doubled the fabrication rate of a 1B model, from 20% to 48%. Layered on retrieval, it added +0.04 on a five-point scale, with a 95% confidence interval of −0.34 to +0.44. Retrieval raised answer quality by 0.86 (+0.48 to +1.24). Fine-tuning the retriever's 33M-parameter embedding model for nine minutes lifted recall@8 from 0.809 to 0.861. The more general finding is methodological. Five measurement instruments returned confident, plausible and wrong numbers, and four substantive conclusions reversed once the instruments were checked. At this scale the binding constraint was not model capability or data volume. It was the ability to tell whether anything had improved. The paper ends with the limitations a later audit found in my own evaluation, including two that narrow what the fine-tuning null result can claim."
 pubDate: "2026-09-25"
+updatedDate: "2026-09-25"
 topic: "development-playbooks"
 tags: ["gemma-grc", "evaluation", "llm-as-judge", "rag", "fine-tuning", "retrieval", "small-models", "grc", "compliance"]
 status: "working-paper"
-version: "v1.0"
+version: "v1.1"
 draft: false
 ---
 
 The first model I fine-tuned on my compliance notes expanded DORA as "DevOps Relapse Analytics" and then cited a web address that does not exist. That was ninety seconds of training on a few dozen hand-written examples, and it set the agenda for everything after it. The model had learned how my notes sound. Whether it had learned anything they say was a question I could only answer by measuring, and measuring turned out to be the hard part.
 
-This is the full record: ten experiments over two weeks, on a Mac Mini M4 with 24 GB of memory, with all training, generation, judging and inference on the device.
+This is the full record: ten experiments over two weeks, on a Mac Mini M4 with 24 GB of memory, with all training, judging and inference on the device. The one exception was the first day of training-data generation, when a cloud teacher model wrote question-answer pairs until it hit its free-tier quota; the next section covers it.
 
 ## The question
 
@@ -26,7 +27,7 @@ My opening design note asserted a prior: fine-tune for form, retrieve for facts.
 
 Notes come from an allowlist of folders in my Obsidian vault and pass a local gate before anything else. Notes marked private are skipped, and structural personal data (email addresses, phone numbers and the like) is redacted by pattern. Notes are split on headings into chunks of roughly 500 words. The gate has since become fail-closed; see the postscript.
 
-A teacher model writes question-answer pairs for each chunk. An early cloud teacher hit its free-tier quota within a day. Generation moved to Gemma 3 12B running locally, which removed the quota and keeps every chunk on the machine. Pairs are deduplicated, length-bounded and filtered by an LLM judge.
+A teacher model writes question-answer pairs for each chunk. An early cloud teacher hit its free-tier quota within a day. Generation moved to Gemma 3 12B running locally, which removed the quota and has kept every chunk on the machine since. Pairs are deduplicated, length-bounded and filtered by an LLM judge.
 
 An audit on day five found the original allowlist was missing roughly 200,000 words of relevant material elsewhere in the vault, including a full information-assurance course and long-form regulatory analysis. Of 56 vault files that mention OWASP, 55 were outside the corpus.
 
@@ -166,7 +167,7 @@ Local tells you where a model runs, not what it was fed. The ingestion gate is n
 - a private or confidential flag or tag;
 - a handling banner.
 
-Windows line endings or malformed frontmatter cannot open the gate. Every chunk carries a provenance class, and only public text and my own writing may leave the machine or train anything.
+Windows line endings or malformed frontmatter cannot open the gate. Every chunk carries a provenance class. Only public text whose licence allows it, and my own published writing, may leave the machine or train a model that could. The search model tuned in August predates the gate and stays on this machine.
 
 Chunk IDs are now content hashes, so a re-ingest can no longer silently re-point evaluation labels. The search index is stamped with the corpus and the model that built it, and refuses to load against anything else. Twenty-six tests cover this layer. Turning the classification check off makes six of them fail, which is how I know they test it.
 
