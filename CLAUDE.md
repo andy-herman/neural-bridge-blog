@@ -32,7 +32,7 @@ Five collections are defined in `src/content/config.ts`: `posts`, `research`, `p
 Posts and research publish through a queue, not by hand:
 
 1. Add the `.mdx` file with `draft: true` and `pubDate` set to the Monday it should publish (that is the convention: pubDate = target Monday).
-2. Push to main. Vercel deploys it, but draft content is excluded from indexes.
+2. Push to main. Vercel builds and deploys the draft at its final URL, but keeps it unlisted: the page carries a `noindex, nofollow` robots meta (the `noindex` prop on `BaseLayout`), the sitemap filter in `astro.config.mjs` drops its URL, and the listing pages and RSS feed skip it. Anyone with the direct link can still open it.
 3. A Sunday-prep job in the separate neural-bridge repo picks the upcoming draft and generates LinkedIn/X drafts for review.
 4. `.github/workflows/scheduled-publish.yml` runs Tuesday 01:00 UTC (Monday 17:00 PST / 18:00 PDT). `scheduled-publish.mjs` finds drafts with `pubDate <= today`, picks the oldest pubDate, flips `draft: false`, updates `pubDate` to the actual publish date, and pushes with `[skip-tweet]` in the commit message.
 5. The same workflow then runs `draft-tweet.mjs` directly to open the tweet-draft issue for the freshly published piece.
