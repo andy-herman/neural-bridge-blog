@@ -1,0 +1,109 @@
+---
+title: "The Law Moved in July. My Assistant Didn't."
+description: "Before swapping the model under my compliance assistant, I rebuilt the thing that says whether the swap worked: a library of primary texts, a 564-question test set, eight canaries for the facts that changed in 2026, and an audit of the AI that grades it all."
+pubDate: 2026-09-28
+project: gemma-grc
+tags: ["gemma-grc", "evaluation", "rag", "llm-as-judge", "eu-ai-act", "grc", "compliance", "build-in-public"]
+draft: false
+---
+
+I asked my compliance assistant a simple question: under the EU AI Act, from what date do the obligations for the high-risk AI systems listed in Annex III apply?
+
+It answered at once. August 2026, it said, and it cited two articles of the Act.
+
+Both halves of that answer were wrong, in an instructive way. The date was the old one. On 27 July the EU's AI Omnibus, Regulation 2026/1744, came into force and moved the Annex III date to 2 December 2027. And neither of the passages it cited contains a date at all. It produced the pre-July answer, from memory or from a neighboring passage, and attached citations that looked right.
+
+What made this more than an embarrassing moment is that the correct text was in the library. Hours earlier I had loaded the consolidated AI Act, the version with the July amendments folded in. The search step never surfaced the article that sets the dates. When I checked, Article 113 was not even in the top 60 results.
+
+I caught it because I had written a question specifically to catch it. That question, and the seven like it, are the most useful thing I built this month.
+
+## Where the project was
+
+Gemma GRC is the small assistant I run on a Mac Mini for my regulatory work. In [my last post](/posts/it-learned-how-i-sound) I wrote that fine-tuning it on my notes taught it my voice and not my knowledge, and that what actually worked was a library: search for the passages that hold the answer, answer only from them, cite them, and say so when the answer isn't there.
+
+The obvious next step was swapping in a newer model. I didn't trust my test set to tell me whether the swap helped. At the size I had been running it, fifty questions, it could only detect a difference of about half a point on a five-point scale. Its questions came from my own notes, which had fallen behind this year's regulatory changes. And each question had exactly one right passage, which is not how regulation works. The same obligation shows up in the regulation, in the guidelines, and in the supervisor's statement about the guidelines.
+
+So I spent the weekend on the instrument instead of the model.
+
+## First, the rules about what it may read
+
+Before adding anything, I tightened the gate. The pipeline now refuses any document that carries a classification marking, whatever folder it sits in, and every passage carries a record of where it came from and what it may be used for: whether it may ever leave the machine, and whether it may ever become training data.
+
+The same rules follow the library into my agent system. My agents can search it, but only in conversations I start myself. A handoff from one agent to another never gets it, and material I can't share comes back only as a count, never as text.
+
+None of this shows up in a demo. All of it is the difference between a tool I can use for work and one I can't.
+
+## Then, the primary sources
+
+My notes are my interpretation of the law. For questions about what the law says, the library needed the law.
+
+It now holds 58 public texts in six lanes, about six thousand passages:
+
+- the EU AI Act as consolidated after the July Omnibus, with the Commission's guidelines and codes of practice;
+- the UK's critical third parties regime, including the regulations that designated the first four firms from 13 July;
+- DORA's oversight rules for critical ICT third-party providers;
+- the new US model risk guidance, SR 26-2, alongside the letters it replaced;
+- the Cyber Resilience Act and NIS2;
+- NIST's control catalogs and AI frameworks.
+
+Three things mattered more than the count.
+
+**Official sources, through the front door.** Everything comes from the publisher's own servers, with a fingerprint of each file and the date I fetched it. EUR-Lex, the EU's law site, answers automated requests with a bot challenge. I didn't try to get around it. The EU Publications Office runs an official data service with the same texts, built for exactly this.
+
+**Every passage says what it is.** A retired rule is useful history and a dangerous answer. SR 11-7 is still in the library, because people still ask how the new guidance differs from it. But every passage from it opens with a line saying it was superseded in April, and draft guidelines say they are drafts, inside the text the model reads.
+
+**The license lives in the data.** EU law is published under CC BY 4.0, UK legislation under the Open Government Licence, and US federal texts are in the public domain: all usable for training. Some UK regulators license their publications for personal or in-firm use only. Those can inform an answer, but they can never become training data or be reproduced in anything I publish. I didn't want to have to remember that. I wanted the pipeline to enforce it.
+
+## A test set that knows what changed
+
+The new test set, eval v3, was built entirely on the Mac, overnight.
+
+A local model wrote draft questions from 551 passages sampled across every document in the library, weighted toward law actually in force and away from drafts. Simple rules threw out questions that didn't name the law they were about, quoted "evidence" that wasn't in the passage, or asked for things nobody needs, like the web address in a footnote. A second model checked that each surviving question could be answered from its passage and that the reference answer was right. 457 made it.
+
+I chose a question writer that won't be a candidate in the comparisons I'm about to run. If one of the models under test had written the questions, it would be sitting an exam in its own handwriting.
+
+Then there are questions with no answer in the library at all, where the right response is "I can't find that." 134 went into the set. When the grading was done, 35 turned out to be answerable after all. The library knew more than I thought, which is its own kind of lesson.
+
+And there are the eight canaries. These were written by hand, not generated, one for each fact I know changed this year: the AI Act's new application dates, the new wording of the AI literacy duty in Article 4, when the Commission's fines for general-purpose AI providers became enforceable, the four UK critical third parties, SR 11-7's replacement and what that replacement leaves out of scope, and the Cyber Resilience Act reporting duty that went live on 11 September. A system that answers from stale memory fails them. I'll rerun them every time the library is refreshed.
+
+One practical lesson from the overnight run: with two large models loaded at once, the 24 GB machine started swapping to disk, and each question took 36 seconds instead of 20. Run one model at a time.
+
+## Grading the graders
+
+A test set is only as good as its answer key. For each question, four different search methods proposed the passages they thought relevant, and two local AI judges graded them from 0 to 3, about 14,000 grades in all.
+
+The judges disagreed on about one pair in five, and almost always in the same direction. One was generous, Gemma 4's small E4B model, and the other strict, Qwen 2.5 14B.
+
+Two more findings changed how I'll use the results.
+
+**The answer key is incomplete.** When I let the searches go deeper on 30 questions, the generous judge found more relevant passages for 24 of them. Even discounted for its generosity, that means some relevant passages were never graded. So I'll score retrieval only against what was graded, and lean harder on whether the final answer is right.
+
+**Questions written from a passage are easy to find.** The passage a question came from ranked first 308 times out of 457. The canaries, written the way a person actually asks, are where the search step struggles. That is the Article 113 story in miniature.
+
+Settling the disputes and the random sample by hand was 1,785 pairs, several hours of my time. Instead, Claude graded the ones it was allowed to see: 1,389 pairs where both the passage and the question come from text that is already public. It took seven minutes. The other 396, involving my own course material or texts licensed for internal use, never left the Mac. For those, the local judge that agreed with Claude more often breaks the tie.
+
+When the two local judges disagreed, Claude sided with the strict one 85% of the time. The generous judge wasn't useless: on four pairs in five the two agreed. But where it mattered, in the disputes, it was usually the one that was wrong. Being a good answerer and being a good grader turn out to be different jobs, and nothing in the generous judge's own scores would have told me which one it was bad at.
+
+But an AI grading AI is still an instrument, and instruments get tested. The last step is mine: a hundred pairs, drawn blind from Claude's grades, the tie-breaks and the local jury's grades, graded by me with nothing on screen telling me what anyone else said. The agreement numbers go on the record next to the test set, and if Claude and I disagree often, the answer key gets rebuilt.
+
+I also treat those grades as evaluation only. They never become training data, and any test item that relies on them stays out of a public release until a local model has re-graded it.
+
+## What happens next
+
+The test set gets frozen: fingerprinted, with the fingerprint written down where I can't quietly change it later. Then the current system gets its baseline on the new questions, and only then does anything change. A newer Gemma, swapped in behind the same library. The Article 113 miss, fixed in its own experiment and measured against the canaries, not patched quietly beforehand so the baseline looks better.
+
+If this sounds slow, it is the discipline every compliance professional already applies to controls. You freeze the population before you sample it. You test the test before you rely on it. You write down what you checked, because that is what an auditor asks to see.
+
+## A test you can run on Monday
+
+Ask the AI tool you use for regulatory work a question whose answer changed this year. When do the AI Act's Annex III obligations apply? Is SR 11-7 still the US model risk guidance? Has the UK designated any critical third parties yet?
+
+Then check its citations. Not whether it cited something. Whether the thing it cited says what it claims.
+
+My assistant got the date wrong with two confident citations. The fix isn't a bigger model. It's knowing that the question exists, and asking it every time the world changes.
+
+---
+
+Gemma GRC has a [project page](/projects/gemma-grc) on this site. The lab write-up from the first round is the working paper [When the Instrument Is the Bottleneck](/research/when-the-instrument-is-the-bottleneck).
+
+#GRC #Compliance #AIEngineering #LLMEvaluation #RAG #EUAIAct #BuildInPublic
