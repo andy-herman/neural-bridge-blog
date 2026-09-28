@@ -1,0 +1,82 @@
+---
+title: "Exit code 1, every two minutes, for four months"
+description: "Neural Bridge's auto-reload watcher exited 1 on every run from May to September without writing a log line, and merged pull requests sat undeployed. The cause was one line of shell in a cleanup function."
+pubDate: 2026-10-05
+project: neural-bridge
+tags: ["neural-bridge", "launchd", "shell-scripting", "monitoring", "build-in-public"]
+draft: true
+---
+
+I came back to the project on 2026-09-25 after about a month away. A `git fetch` showed my local `main` sixteen commits behind `origin/main`, and two pull requests that had merged two days earlier had never reached the running agents.
+
+A launchd job called `auto-reload` exists to keep that from happening, so I checked it. `launchctl print` showed `last exit code = 1`. The watcher's own log ended at 2026-05-13 18:34 UTC. The Mac had rebooted earlier that day, and launchd had counted 77 runs since then. Every one had exited 1.
+
+The watcher had been failing for four months, and it had not written a single line about it.
+
+## The job and the bug
+
+Neural Bridge runs a Discord daemon hosting thirteen agents, plus three Telegram bridges, as always-on launchd services on a Mac Mini. Every two minutes, `auto-reload` runs `scripts/auto_reload.sh`. If the checkout is on `main`, the script runs `git fetch`, fast-forwards `main`, and, when daemon code has changed, reinstalls the launchd services so the agents pick up the new code. PR [#84](https://github.com/andy-herman/neural-bridge/pull/84) added it on 2026-05-10.
+
+PR [#115](https://github.com/andy-herman/neural-bridge/pull/115) merged the same day and added silent-staleness protection. If the checkout sat on a feature branch for fifteen ticks (thirty minutes), the watcher would post one Discord ping, because a watcher that skips quietly lets the daemon run stale code forever. Part of that change was a function, `reset_skip_state`, called on every tick that reached `main` to clear the skip state. Its last line was:
+
+```bash
+[ -f "$ALERTED_FLAG" ] && rm -f "$ALERTED_FLAG"
+```
+
+In the normal case the flag file does not exist. Then `[ -f ... ]` is false, the `&&` list returns 1, and because that is the last line, the function returns 1.
+
+The script runs under `set -euo pipefail`. Under `set -e`, a function call that returns non-zero as a plain statement ends the script on the spot. Nothing went to stderr, and nothing went to the log, because the log call came later. So on every tick where the checkout was on `main`, which is the normal, healthy state, the watcher died before it ever ran `git fetch`. Only the feature-branch path, which never calls `reset_skip_state`, still wrote to the log.
+
+The Mac never sleeps. At one run every two minutes, 2026-05-13 to 2026-09-25 comes to more than 90,000 failed runs.
+
+The feature built to catch silent staleness is what made the whole thing silently stale. Nothing alerted. The daily memory canary checks memory stores, not whether the deployed code matches `main`, and launchd does not alert on exit codes.
+
+## What was hiding behind it
+
+Because the script always died first, two more defects sat in code it never reached.
+
+The first would have killed the watcher partway through any reload. The reload step runs `install.sh`, which re-bootstraps every launchd job on its list, `auto-reload` included, and booting out the running job terminates the script. The only reload on record, from 2026-05-10 before #115 merged, stops in the log at `agent already loaded; unloading first...` and never installs the agents listed after it.
+
+The second was that the Telegram bridges were never reloaded at all. They import the same prompt-building and runtime code as the Discord daemon, but `install.sh` does not manage them. On 2026-09-24, my assistant agent Luna answered a Telegram message using code from before 2026-08-16. Her telemetry for that turn showed the older code path: a memory layer added on 2026-08-16, which gives her pre-fetched calendar and inbox state, never logged.
+
+## What it held back
+
+PRs [#162](https://github.com/andy-herman/neural-bridge/pull/162) and [#163](https://github.com/andy-herman/neural-bridge/pull/163) merged on 2026-09-23 and never reached the running system. The title of #162 was "Memory layer repair: silent failures fixed, wiki read loop closed, stores consolidated, pytest CI".
+
+## The fix
+
+PR [#164](https://github.com/andy-herman/neural-bridge/pull/164), merged 2026-09-25, replaced the cleanup line:
+
+```bash
+rm -f "$SKIP_COUNTER" "$ALERTED_FLAG"
+```
+
+`rm -f` cannot fail on a missing file, so a healthy tick no longer kills the script.
+
+The script also gained `set -E` and an `ERR` trap, so any early exit now writes one log line with the line number and status. The `-E` matters. Without it, an `ERR` trap is not inherited by functions, and a command that fails inside one ends the script without the trap ever running.
+
+The rest of the change:
+
+- A dirty working tree or a failed fast-forward now counts toward the same blocked-tick threshold and pings Discord once, instead of logging forever and alerting never.
+- `install.sh` honors an `NB_INSTALL_SKIP` variable, and the watcher passes its own label in it, so a reload no longer boots the watcher out halfway through.
+- After a reload, the watcher restarts the three Telegram bridges.
+
+The tests in `scripts/test_auto_reload.py` run the real script against a throwaway `HOME` holding a scratch git repo and a bare `origin`, with `launchctl`, `security`, `curl` and `sleep` stubbed on PATH. All seven script tests fail against the old script. One is the plain regression: on `main`, up to date, no state files, the exit code must be 0.
+
+## Proof
+
+Once the fix was running, the next merge was the test. PR [#165](https://github.com/andy-herman/neural-bridge/pull/165) merged at 17:00:19 PT on 2026-09-25. The watcher pulled it about a minute later, reinstalled the services, logged "reload done" at 17:01:50, and restarted all three bridges. It was the first unattended deploy since May. The merge after that, [#166](https://github.com/andy-herman/neural-bridge/pull/166), deployed 63 seconds after it landed.
+
+Deploying the stuck work immediately surfaced another silent failure in a different layer, which is a separate story.
+
+## What I took from it
+
+To launchd, a job that fails every two minutes for four months looks like a job that runs every two minutes. It recorded the exit code and did nothing with it. An exit code nobody reads is not a health signal.
+
+`[ test ] && action` as the last line of a function is a `set -e` trap. It is idiomatic shell, and when the test is false the function returns 1. For cleanup, `rm -f` gets rid of the test entirely.
+
+The lesson that outlasts the shell syntax is to assert on the state you want, not on the absence of errors. The invariant that mattered here was simple: the running code is the code on `main`. Nothing checked it.
+
+The watcher needed a watcher. The same week, a watchdog went in that checks whether each scheduled job's output file actually changed, instead of trusting exit codes. Its first false alarm was instructive. It flagged a nightly drift check as dead because no report appeared, but that job only writes a report when it finds drift, and the vault was clean. The fix was to watch a heartbeat the job writes on every run. When a job's output is conditional, watch its heartbeat, not its output.
+
+Monitoring code is code, and it fails like code.
