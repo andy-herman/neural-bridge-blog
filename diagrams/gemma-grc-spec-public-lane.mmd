@@ -1,0 +1,23 @@
+flowchart TB
+  subgraph FETCH["FETCH · official hosts only"]
+    direction LR
+    MAN["Manifest: 58 sources<br/>license, status,<br/>version date"] --> HOST{{"Official host,<br/>https on every hop?"}}
+    EU["EU acts through the<br/>CELLAR API; EUR-Lex<br/>pages block scripts"] --> HOST
+    HOST -- "no" --> REF["Refused"]
+    HOST -- "yes" --> RAW["Raw file,<br/>sha256 and<br/>retrieval date"]
+  end
+  subgraph PARSE["PARSE AND LABEL"]
+    direction LR
+    FMT["Parser by format<br/>EUR-Lex XHTML, UK CLML,<br/>NIST OSCAL and CPRT,<br/>PDF pages, HTML"] --> UNIT["One unit per article,<br/>recital, annex, section,<br/>control or page"]
+    UNIT --> PACK["Chunks of at most<br/>1,700 characters"]
+    PACK --> HEAD["Header: cite, version,<br/>applies from, and<br/>SUPERSEDED or DRAFT"]
+    HEAD --> OUT[("5,989 labeled<br/>public chunks")]
+  end
+  FETCH ==> PARSE
+
+  classDef gate stroke:{{ACCENT}},stroke-width:2px,fill:{{ACCENT_FILL}};
+  classDef stop stroke:{{MUTED}},stroke-dasharray:4 3,fill:{{MUTED_FILL}},color:{{MUTED}};
+  classDef out stroke:{{ACCENT}},stroke-width:2px;
+  class HOST gate;
+  class REF stop;
+  class OUT out;

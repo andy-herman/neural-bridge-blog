@@ -1,0 +1,27 @@
+flowchart TB
+  subgraph WRITE["WRITE · local models, clean build"]
+    direction LR
+    UNITS["Units from<br/>the clean build"] --> SPLIT["Holdout by unit<br/>dev 20%, test 80%"]
+    SPLIT --> QW["Questions written<br/>by qwen2.5 14B"]
+    QW --> CHK{{"Anchored to its<br/>unit, not trivial?"}}
+    CHK -- "no" --> DROP["Dropped"]
+    CHK -- "yes" --> SET["457 answerable<br/>99 absent<br/>8 canaries"]
+  end
+  subgraph GRADE["GRADE · several right passages per question"]
+    direction LR
+    POOL["Candidates pooled<br/>from four retrievers,<br/>depth 6"] --> JURY["Two local judges<br/>relevance 0 to 3"]
+    JURY --> MAYLEAVE{{"Pair cleared to<br/>leave the Mac?"}}
+    MAYLEAVE -- "yes" --> CL["Claude grades it,<br/>evaluation only"]
+    MAYLEAVE -- "no" --> RULE["Local dispute rule<br/>qwen2.5 14B"]
+    CL --> AUD{{"My blind audit<br/>100 pairs"}}
+    RULE --> AUD
+    AUD --> FRZ[("Frozen set<br/>with sha256")]
+  end
+  WRITE ==> GRADE
+
+  classDef gate stroke:{{ACCENT}},stroke-width:2px,fill:{{ACCENT_FILL}};
+  classDef stop stroke:{{MUTED}},stroke-dasharray:4 3,fill:{{MUTED_FILL}},color:{{MUTED}};
+  classDef out stroke:{{ACCENT}},stroke-width:2px;
+  class CHK,MAYLEAVE,AUD gate;
+  class DROP stop;
+  class FRZ out;

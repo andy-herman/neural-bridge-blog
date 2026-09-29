@@ -1,0 +1,18 @@
+flowchart LR
+  P["public<br/>5,989 chunks"] --> CLEAN[("Clean build<br/>6,304 chunks<br/>stock BGE-small")]
+  O["own writing<br/>315 chunks"] --> CLEAN
+  P --> LOCAL[("Local build<br/>7,167 chunks<br/>tuned search model")]
+  O --> LOCAL
+  X["other classes<br/>cleared by the gate"] --> LOCAL
+  CLEAN --> EVAL["Evaluation, examples,<br/>anything published"]
+  LOCAL --> ASK["My questions<br/>on the Mac"]
+  LOCAL --> MCP{{"MCP boundary"}}
+  MCP -- "public and own:<br/>passage text" --> AG["My research agents"]
+  MCP -. "other classes:<br/>counts only" .-> AG
+
+  classDef gate stroke:{{ACCENT}},stroke-width:2px,fill:{{ACCENT_FILL}};
+  classDef stop stroke:{{MUTED}},stroke-dasharray:4 3,fill:{{MUTED_FILL}},color:{{MUTED}};
+  classDef out stroke:{{ACCENT}},stroke-width:2px;
+  class MCP gate;
+  class X stop;
+  class EVAL out;

@@ -1,0 +1,21 @@
+flowchart TB
+  subgraph TEST["BEFORE USE · every judge is control-tested"]
+    direction LR
+    CTRL["272 controls in 8 types<br/>right answers, swapped details,<br/>added claims, wrong citations,<br/>wrong abstentions"] --> PASS{{"Catches what<br/>it should?"}}
+    PASS -- "no" --> HOLD["Held back"]
+    PASS -- "yes" --> USE["Used for scoring"]
+  end
+  subgraph SCORE["SCORE · every answer, on the Mac"]
+    direction LR
+    ANS["Answer split<br/>into claims"] --> T0["Tier 0 rules<br/>citations valid; dates,<br/>numbers, references found"]
+    T0 --> FC["FactCG per claim<br/>cited passages first,<br/>then every shown one,<br/>then the gold ones"]
+    FC --> MET["Correct, grounded,<br/>citation precision,<br/>fabrication"]
+  end
+  TEST ==> SCORE
+
+  classDef gate stroke:{{ACCENT}},stroke-width:2px,fill:{{ACCENT_FILL}};
+  classDef stop stroke:{{MUTED}},stroke-dasharray:4 3,fill:{{MUTED_FILL}},color:{{MUTED}};
+  classDef out stroke:{{ACCENT}},stroke-width:2px;
+  class PASS gate;
+  class HOLD stop;
+  class MET out;

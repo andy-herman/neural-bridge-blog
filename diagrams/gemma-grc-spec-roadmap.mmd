@@ -1,0 +1,25 @@
+flowchart LR
+  subgraph DONE["DONE"]
+    direction TB
+    D1["Aug 2026<br/>Fine-tuning on my notes<br/>raised fabrication"]
+    D2["Aug 2026<br/>Retrieval shipped,<br/>search model tuned"]
+    D3["Sep 25<br/>Fail-closed gate,<br/>provenance, MCP"]
+    D4["Sep 25 to 28<br/>Public lanes,<br/>eval v3 built"]
+    D5["Sep 28<br/>Temporal router"]
+    D6["Sep 28 to 29<br/>Judges tested,<br/>Run 011 started"]
+    D1 --> D2 --> D3 --> D4 --> D5 --> D6
+  end
+  subgraph NEXT["NEXT"]
+    direction TB
+    N1["Run 011 results:<br/>library vs memory,<br/>router on vs off"]
+    N2["Audit 100 pairs,<br/>freeze eval v3"]
+    N3["Fix quote controls,<br/>settle the Tier 2 judge"]
+    N4["Retrieval: stemming,<br/>embedder trial,<br/>new canaries"]
+    N5["Run 012: Gemma 4 E4B<br/>against Gemma 3 4B"]
+    N6["Policy alignment<br/>prototype"]
+    N1 --> N2 --> N3 --> N4 --> N5 --> N6
+  end
+  DONE ==> NEXT
+
+  classDef out stroke:{{ACCENT}},stroke-width:2px;
+  class D6,N1 out;
