@@ -1,0 +1,450 @@
+---
+title: "Gemma GRC: A Technical Specification"
+description: "How a small local model answers compliance questions from a governed library of primary regulatory texts: the data flows, the corpus rules, retrieval, generation, the evaluation and judging stack, what it is for, and what comes next."
+abstract: "Gemma GRC is a governance, risk and compliance assistant that runs on a Mac Mini with no network connection. A four-billion-parameter open model answers only from a governed library, 5,989 passages of primary regulatory text from 58 official sources plus my own notes, and cites the passage behind every claim. This specification describes the system as it stood on 29 September 2026: the build-time data flows that fetch, parse, gate and label the library; the query path, including hybrid retrieval and a router for questions about when rules apply; the boundary that lets my agents search the library without seeing restricted text; and the evaluation stack, a 564-question test set scored by judges that were tested before they were trusted. It ends with what the system is for, where it fails, and the next pieces of work. Results from the first end-to-end baseline, Run 011, will be added in the next version."
+pubDate: 2026-10-19
+topic: development-playbooks
+tags: ["gemma-grc", "rag", "local-ai", "evaluation", "llm-as-judge", "ai-governance", "grc", "build-in-public"]
+status: working-paper
+version: "v1.0"
+draft: true
+---
+
+This is the reference document for Gemma GRC: what each part does, how data moves between the parts, and the evidence behind each design choice. The story of how it got here is in [It Learned How I Sound, Not What I Know](/posts/it-learned-how-i-sound) and [The Law Moved in July](/posts/the-law-moved-in-july). The run-by-run lab record is in [When the Instrument Is the Bottleneck](/research/when-the-instrument-is-the-bottleneck). This document is versioned, and when a number changes, the version changes with it.
+
+## At a glance
+
+| Part | Summary |
+|---|---|
+| What it is | A question-answering assistant for GRC work that answers only from a governed library and cites every claim |
+| Where it runs | A Mac Mini M4 with 24 GB of memory, with no network connection at question time |
+| Generator | Gemma 3 4B instruct, 4-bit, on Apple's MLX, greedy decoding, no fine-tuned adapter |
+| Library | 5,989 chunks from 58 official public sources in six lanes, plus 315 chunks of my own writing and teaching |
+| Retrieval | BM25 and BGE-small embeddings fused by reciprocal rank, top eight, with a router for questions about when rules apply |
+| Agent access | One owner-only MCP tool that returns text for public and own passages and counts for everything else |
+| Evaluation | 564 questions: 457 answerable, 99 whose answer is not in the library, 8 canaries |
+| Judges | Rules, then FactCG claim by claim, both tested on 272 controls before use |
+| Status | Working system; the first end-to-end baseline, Run 011, is running |
+
+## Design principles
+
+1. **Read, don't remember.** Facts live in the library, where they can be updated in an evening and checked in a minute. The model supplies language and discipline, not facts. When I fine-tuned a small model on my notes, fabricated details rose from one answer in five to nearly half.
+2. **Show me the page.** Every factual claim cites a passage the model was shown. When the library does not cover a question, the answer says what is missing and where it would be.
+3. **Govern what goes in.** A fail-closed gate decides what enters the library. Every passage records where it came from and what its license allows, and its provenance class decides where its text may go.
+4. **Label everything.** Every regulatory passage carries its citation, version date, application date and status: in force, draft or superseded. Superseded texts stay in the library, labeled, because "what did this replace?" is a common question.
+5. **Test the instruments.** Retrievers, judges and the test set are measured before anything is measured with them.
+6. **The model is replaceable.** Because the knowledge lives in the library, swapping the generator is a configuration change followed by a rerun of the tests.
+7. **Local by default.** Answers are produced on the Mac. Text leaves the machine only when its provenance class allows it.
+
+## System overview
+
+<figure class="not-prose my-10 lg:-mx-24">
+<a href="/images/projects/gemma-grc-spec-architecture-light.svg" class="block" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/gemma-grc-spec-architecture-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/gemma-grc-spec-architecture-light.svg" alt="Gemma GRC in three stages. Build, on the Mac with no model involved: the public lane of 58 official sources is parsed, chunked and labeled with version and status, while my notes and course material pass a fail-closed confidentiality gate and are chunked, redacted and stamped with provenance; both feed a fingerprinted BM25 and dense index. Serve, with no network: a question from me, or from my agents through an owner-only MCP boundary, goes to hybrid search with a temporal router, which passes the top eight passages to Gemma 3 4B with a grounding prompt; the answer cites a passage per claim or says what is missing. Measure, on the clean build only: eval v3 with 564 questions, runs that change one thing, control-tested judges, and scores with confidence intervals." width="1037" height="605" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+<figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Figure 1 · Build, serve, measure · <a href="/images/projects/gemma-grc-spec-architecture-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
+</figure>
+
+The system has three stages. Build turns sources into a labeled, fingerprinted index, and no model is involved. Serve answers a question from that index with no network connection. Measure scores answers against a frozen test set, using judges that have themselves been tested.
+
+<div class="overflow-x-auto">
+
+| Component | Implementation | Key parameters |
+|---|---|---|
+| Source manifest | `public_sources.yaml` | 58 sources in 6 lanes; URL, license, status and version date for each |
+| Fetch | `public_fetch.py` | Official hosts only, https on every redirect, sha256 logged |
+| Parse and chunk | `public_parse.py`, `public_ingest.py` | One unit per article, section, control or page; chunks of at most 1,700 characters |
+| Notes ingest | `vault_ingest.py`, `corpus_policy.py` | Fail-closed gate, PII redaction, provenance classes, content-hash IDs |
+| Index | `retrieval.py` | BM25 and BGE-small vectors, stamped with corpus and model fingerprints |
+| Question answering | `ask.py` | k = 8, 13,000-character context budget, temporal router, greedy decoding |
+| Agent tool | `mcp_server.py` | stdio, owner-only, text for public and own passages only |
+| Evaluation | `evalv3_build.py`, `run_eval_v3.py`, `score_eval_v3.py`, `compare_runs.py` | 564 questions, 95% bootstrap intervals, paired comparisons |
+| Judges | `judges.py`, `judge_controls.py` | Tier 0 rules, FactCG, 272 controls |
+
+</div>
+
+## The library
+
+### Public lanes
+
+Primary texts come in six lanes, one for each regulatory area I work in. For every source, the manifest records the official URL, jurisdiction, instrument, document type, status, version date and license, and whether the text may be used to train a model.
+
+| Lane | Scope | Sources | Chunks |
+|---|---|---|---|
+| 1 | The EU AI Act as amended by the AI Omnibus (Regulation (EU) 2026/1744), the Commission's guidelines and codes of practice, the AI literacy Q&A, and three draft high-risk classification guidelines | 14 | 1,647 |
+| 2 | UK critical third parties: the 2026 designation regulations, FSMA 2000 Part 18 Chapter 3C, HM Treasury's approach and announcement, the Bank of England, PRA and FCA rules and statements, and the memorandum of understanding between the ESAs and the UK authorities | 10 | 457 |
+| 3 | DORA and the oversight of critical ICT third-party providers: the Regulation, seven delegated and implementing acts, and the ESAs' designation list and work programme | 10 | 535 |
+| 4 | Model risk: SR 26-2 and the 2026 interagency guidance, OCC Bulletin 2026-13, FDIC FIL-15-2026, the superseded SR 11-7 and SR 21-8, and the PRA's SS1/23 | 7 | 162 |
+| 5 | EU cyber resilience: the Cyber Resilience Act and the Commission's guidance on it, NIS2 and its implementing regulation, ENISA's technical guidance and single reporting platform | 6 | 902 |
+| 6 | NIST: SP 800-53, CSF 2.0, SP 800-171r3, the SSDF, the AI RMF, AI 600-1, AI 100-2 E2025, and four drafts | 11 | 2,286 |
+| | **Total** | **58** | **5,989** |
+
+Forty-nine sources are in force, seven are drafts and two are superseded. Twenty-seven are under CC BY 4.0, seventeen are US federal works in the public domain, five are under the UK Open Government Licence (one of them with the FCA Handbook terms), and four are ESA publications reusable with acknowledgment. Five UK regulator texts are licensed for internal use only. They can be retrieved on the Mac, but they never leave it and never train anything.
+
+### Fetching
+
+<figure class="not-prose my-10 lg:-mx-24">
+<a href="/images/projects/gemma-grc-spec-public-lane-light.svg" class="block" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/gemma-grc-spec-public-lane-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/gemma-grc-spec-public-lane-light.svg" alt="The public lane. Fetch: the manifest of 58 sources, with license, status and version date, and EU acts requested through the CELLAR API because EUR-Lex pages block scripts, both pass a gate that asks whether the host is official and https holds on every redirect. Anything else is refused. Accepted files are saved with a sha256 and a retrieval date. Parse and label: a parser chosen by format (EUR-Lex XHTML, UK CLML, NIST OSCAL and CPRT, PDF pages, HTML) cuts one unit per article, recital, annex, section, control or page; units are packed into chunks of at most 1,700 characters; each gets a header with its citation, version, application date and a SUPERSEDED or DRAFT label, giving 5,989 labeled public chunks." width="1169" height="393" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+<figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Figure 2 · The public lane · <a href="/images/projects/gemma-grc-spec-public-lane-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
+</figure>
+
+The fetcher accepts only the official hosts of the issuing bodies: the EU institutions and agencies, the UK government, legislation.gov.uk and the UK regulators, the US banking agencies, and NIST, including NIST's own GitHub organization for the OSCAL catalogs. It follows redirects itself, forcing https and checking the host again on every hop, and refuses anything else.
+
+EUR-Lex answers scripts with a bot challenge: an HTTP 202 and an empty body. The fetcher never tries to get past it. EU acts come instead from the Publications Office's CELLAR repository, requested by CELEX number with content negotiation for XHTML.
+
+Every raw file is hashed with sha256 and logged with its retrieval date, so any passage can be traced to the exact bytes it came from.
+
+### Parsing and labels
+
+| Format | Sources | Unit |
+|---|---|---|
+| EUR-Lex XHTML | 13 EU acts, original and consolidated | Article, recital or annex, with consolidation markers removed |
+| UK CLML XML | 2 instruments from legislation.gov.uk | Regulation or section |
+| OSCAL JSON | 4 NIST catalogs | Control or enhancement |
+| CPRT JSON | The NIST AI RMF | Subcategory |
+| PDF | 31 guidance documents, statements and rules | Page, with running headers and front matter removed |
+| HTML | 7 letters, bulletins and web pages | The document body |
+
+Units are packed into chunks of at most 1,700 characters of body text. Each chunk starts with a header that carries its citation and labels, so the label travels with the text into the prompt:
+
+```text
+SR 11-7 guidance p. 8: III. OVERVIEW OF MODEL RISK MANAGEMENT (part 3 of 3)
+SR 11-7 / OCC Bulletin 2011-12 attachment | version 2011-04-04 | [SUPERSEDED by SR 26-2 (17 Apr 2026); kept for history]
+```
+
+Drafts carry `[DRAFT: not adopted; do not state it as law]`. Each chunk also stores structured fields: a content-hash ID, provenance, jurisdiction, instrument, status, version date, application date, license, whether it may train a model, official URL, retrieval date, document, unit and formal citation.
+
+### My notes
+
+Notes and course material from my vault pass the gate described on the [project page](/projects/gemma-grc). A note is held back if it has a classification, sensitivity or handling label other than public, a classification line at the top, a private or confidential flag or tag, or a handling banner. Quirks in line endings or frontmatter cannot open the gate. Cleared notes are chunked, PII is redacted, and each chunk is stamped with a content-hash ID and a provenance class: own, for my own writing and teaching, or a class that stays local.
+
+### Two builds
+
+<figure class="not-prose my-10">
+<a href="/images/projects/gemma-grc-spec-builds-light.svg" class="block" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/gemma-grc-spec-builds-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/gemma-grc-spec-builds-light.svg" alt="Two builds. Public chunks (5,989) and my own writing (315) form the clean build of 6,304 chunks, indexed with the stock BGE-small model and used for evaluation, examples and anything published. The same chunks plus the other classes the gate clears form the local build of 7,167 chunks, indexed with the tuned search model, which serves my questions on the Mac and the MCP boundary. Through that boundary my research agents receive passage text for public and own chunks, and only counts for other classes." width="872" height="302" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+<figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Figure 3 · Where each class may go · <a href="/images/projects/gemma-grc-spec-builds-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
+</figure>
+
+The provenance class decides which build a chunk joins.
+
+- **The clean build** holds public texts and my own writing: 6,304 chunks. It is the only build used for evaluation, examples and anything published, and it is indexed with the stock BGE-small model.
+- **The local build** adds every other class the gate clears, for 7,167 chunks. It serves my own questions on the Mac, with the search model I fine-tuned in August. That model was trained before the gate existed, so it never leaves the machine.
+
+Each index is stamped with fingerprints of its corpus and its embedding model, and it refuses to load against anything else. Chunk IDs are content hashes, so a passage keeps its ID across rebuilds unless its text changes.
+
+## Answering a question
+
+<figure class="not-prose my-10 lg:-mx-24">
+<a href="/images/projects/gemma-grc-spec-query-light.svg" class="block" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/gemma-grc-spec-query-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/gemma-grc-spec-query-light.svg" alt="The query path. Retrieve: the question is ranked by BM25 keyword search and by BGE-small dense similarity, the two rankings are merged by reciprocal rank fusion, and a gate asks whether the question is about when something applies. If yes, up to two application provisions of that instrument go first; either way the top eight passages are kept. Answer, with greedy decoding on the Mac: each passage is clipped to 2,000 characters within a 13,000-character budget, a grounding prompt with four rules goes to Gemma 3 4B instruct in a 4-bit MLX build, and the answer either cites a passage per claim, carrying labels through, or says what is missing and where it would be." width="1200" height="423" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+<figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Figure 4 · The query path · <a href="/images/projects/gemma-grc-spec-query-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
+</figure>
+
+### Hybrid retrieval
+
+The question is ranked two ways: BM25 over the chunk text, and cosine similarity over BGE-small embeddings, with BGE's query instruction added to the front of the question. The two rankings are merged by reciprocal rank fusion with the usual constant of 60, and the top eight passages are kept. There is no reranker; one made results worse when I tried it.
+
+### Temporal routing
+
+Questions about when a rule applies were the weakest category. Asked when the Annex III obligations of the AI Act apply, the search ranked the Act's descriptive articles highly and never surfaced Article 113, the article that sets the dates. The model then supplied a stale date and cited passages that contained none.
+
+The router is a narrow fix for that failure. When a question asks when something applies, enters into force or takes effect, the router works out which instrument it means: by name, through aliases in the manifest, or else as the document that dominates the top 20 results. It then puts up to two of that instrument's application provisions first, meaning the articles headed entry into force, application, commencement, transposition or transitional provisions. Everything else keeps its fused order.
+
+| Question set | Right passage in the top eight, before | After |
+|---|---|---|
+| Canaries | 6 of 8 | 8 of 8 |
+| Temporal probes | 6 of 10 | 10 of 10 |
+| Eval v3 temporal questions | 13 of 13 | 13 of 13 |
+
+The router can be switched off, and Run 011's router-off arm does exactly that.
+
+### Context and prompt
+
+Passages go into the prompt in rank order, each clipped to 2,000 characters, until a 13,000-character budget is used up. Long passages fill the budget early. In the first 127 questions of Run 011, 32 prompts held six or seven passages rather than eight. The prompt is short, and its four rules do most of the work:
+
+```text
+Rules:
+- Cite the context number you used, like [2], for each factual claim.
+- If the context does not contain the answer, say exactly what is missing and which document would hold it. Do not guess.
+- Never invent article numbers, control IDs, dates, or URLs.
+- If a passage is marked [DRAFT], [PROPOSAL] or [SUPERSEDED], say so whenever you rely on it; never present it as current law.
+```
+
+### Generation
+
+Gemma 3 4B instruct runs in a 4-bit MLX build with greedy decoding and at most 500 new tokens, so the same question against the same library always gets the same answer. mlx-lm is pinned to a commit that includes the fix for CVE-2026-5843. The model carries no fine-tuned adapter. On an earlier setup, retrieval raised answer quality by 0.86 points on a five-point scale (95% CI 0.48 to 1.24). Fine-tuning on top of retrieval added 0.04 (CI -0.34 to 0.44), which is nothing. After each answer, the tool lists its sources with citation, status, version date and official URL.
+
+### One answer, end to end
+
+A real run from 28 September, on the clean build. The question was: "Our model risk policy still cites SR 11-7. Is that still current, and does the current guidance cover generative AI?"
+
+The search returned eight passages: six pages of SR 11-7, each labeled superseded; one of my lecture notes; and page 3 of the 2026 interagency guidance, which says generative and agentic AI models are not within its scope. The answer said SR 11-7 was superseded by SR 26-2 on 17 April 2026, and cited the label. Its fourth sentence then said the new guidance does cover generative AI, and its fifth said it does not.
+
+FactCG scored each cited sentence against its passage: 0.80, 0.88, 0.20 for the misread, 0.95 and 0.81. The judge caught the one claim a reader should not trust. Asked the same question with no library, the same model said SR 11-7 was still current and dated it to 2019.
+
+## Agent access
+
+My agents reach the library through one MCP tool, `search_grc`, served over stdio on the Mac. It is registered for my own sessions only. My Discord agents get it only on turns I start myself, never on a handoff from one agent to another, and the grant lives outside every repository.
+
+The tool returns passage text only for public texts and my own writing. Matches in any other class come back as counts, so an agent knows something relevant exists and can tell me to look locally. Public passages arrive with their citation, status, version date, official URL and a handling note derived from their license.
+
+This is the one path where library text reaches a model off the machine. The agents run on a hosted model, so only text whose class allows it to leave is ever returned. Answers from `ask.py` never leave the Mac.
+
+## Measuring it
+
+### Eval v3
+
+<figure class="not-prose my-10 lg:-mx-24">
+<a href="/images/projects/gemma-grc-spec-eval-light.svg" class="block" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/gemma-grc-spec-eval-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/gemma-grc-spec-eval-light.svg" alt="How eval v3 was built. Write, with local models on the clean build: units from the clean build are split by unit into dev (20%) and test (80%), qwen2.5 14B writes questions, and a gate drops questions not anchored to their unit or trivial, leaving 457 answerable, 99 absent and 8 canaries. Grade, with several right passages per question: candidates are pooled from four retrievers to depth 6, two local judges grade relevance from 0 to 3, and a gate asks whether the pair is cleared to leave the Mac. If yes, Claude grades it for evaluation only; if no, a local dispute rule using qwen2.5 14B decides. Both paths feed my blind audit of 100 pairs, and the set is then frozen with a sha256." width="1206" height="426" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+<figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Figure 5 · Building the test set · <a href="/images/projects/gemma-grc-spec-eval-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
+</figure>
+
+Eval v3 is the test set every change is measured against. It is built from the clean build only, so everything about it can be discussed in public.
+
+- **Questions.** qwen2.5 14B wrote questions from sampled units. A deterministic check dropped any question that did not name its instrument or authority, and any about URLs, contact details or page numbers. Of 599 drafted, 564 are usable: 457 answerable, 99 absent (the library does not hold the answer; 35 more were dropped because it did) and 8 canaries.
+- **Canaries.** Eight hand-written questions about facts that changed in 2026:
+  - the AI Act's new application dates;
+  - the new wording of the AI literacy duty in Article 4;
+  - when the Commission's fines for general-purpose AI providers became enforceable;
+  - the four UK critical third parties;
+  - SR 11-7's replacement, and what that replacement leaves out of scope;
+  - the Cyber Resilience Act reporting duty that went live on 11 September.
+
+  A system answering from stale memory fails them, so every run includes them, whatever the split.
+- **Holdout.** Questions are split by source unit, not by question, so no unit feeds both dev and test. That gives 931 units, 115 dev questions and 449 test questions.
+- **Several right answers.** Each question gets a set of gold passages, not just one. Candidates are pooled from four retrievers (BM25, BGE, BGE-M3 and the hybrid) to depth 6, and two local judges grade each for relevance from 0 to 3.
+- **Grading the graders.** Claude also grades a pair when both the question and the passage are public: 1,389 pairs, for evaluation only, and never as training data. When the local judges disagreed, Claude sided with qwen2.5 14B 85% of the time, so qwen settles disagreements on the 396 pairs that never leave the Mac.
+- **My audit.** I grade a blind sample of 100 pairs, drawn from Claude's grades, the tie-breaks and the jury, with no other grade on screen. When the audit is done, the set is frozen and its sha256 recorded.
+
+### Judges
+
+<figure class="not-prose my-10">
+<a href="/images/projects/gemma-grc-spec-judges-light.svg" class="block" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/gemma-grc-spec-judges-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/gemma-grc-spec-judges-light.svg" alt="Judging. Before use, every judge is control-tested: 272 controls in eight types (right answers, swapped details, added claims, wrong citations, wrong abstentions) go through a gate asking whether the judge catches what it should; judges that fail are held back, and judges that pass are used for scoring. Scoring, for every answer on the Mac: the answer is split into claims, Tier 0 rules check that citations are valid and that dates, numbers and references are found, FactCG checks each claim against the cited passages first, then every shown passage, then the gold passages, and the results are correct, grounded, citation precision and fabrication." width="933" height="354" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+<figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Figure 6 · Testing the judges, then judging · <a href="/images/projects/gemma-grc-spec-judges-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
+</figure>
+
+Answers are scored claim by claim, on the Mac, by judges from model families other than the generator's.
+
+- **Tier 0: rules.** No model is involved. Every citation must point at a passage that reached the prompt. Every date, number and article, section or control reference in a claim must appear in the passages it cites, and dates match in any format. Abstentions are detected, so they are scored as abstentions.
+- **Tier 1: FactCG.** FactCG-DeBERTa-v3-Large (0.4 billion parameters, MIT license) scores whether a passage supports a claim. It needs its authors' instruction template; called as a plain sentence pair, it cannot tell right from wrong. Each claim is checked against its cited passages first, then against every shown passage if those do not support it, then against the gold passages. A score of 0.5 or more counts as support.
+- **Tier 2: candidates.** Granite Guardian 4.1 8B (groundedness) and gpt-oss-20b (holistic, on binary criteria) have been tested but are not in use yet.
+
+Before a judge is used, it runs on 272 controls built from the test set, where the right verdict is known:
+
+| Control | Count | Right verdict |
+|---|---|---|
+| Positive: the reference answer, correctly cited | 51 | Pass |
+| Quote positive: a verbatim sentence from the gold passage | 23 | Pass |
+| Swapped: the reference answer with a date or number changed | 6 | Flag |
+| Quote swapped: the verbatim sentence with a detail changed | 19 | Flag |
+| Added: the reference answer plus an unsupported claim | 51 | Flag |
+| Wrong citation: the right answer citing the wrong passage | 51 | Flag |
+| Wrong abstention: "not in the passages" when it is | 51 | Flag |
+| Wrong answer: a confident answer when the library has none | 20 | Flag |
+
+<div class="overflow-x-auto">
+
+| Judge | Positive | Quote positive | Swapped | Quote swapped | Added | Wrong citation | Wrong abstention | Wrong answer |
+|---|---|---|---|---|---|---|---|---|
+| Tier 0 rules | 51/51 | 21/23 | 6/6 | 19/19 | 12/51 | 6/51 | 51/51 | 20/20 |
+| FactCG | 50/51 | 23/23 | 6/6 | 18/19 | 51/51 | 50/51 | 51/51 | 20/20 |
+| Granite Guardian 4.1, 8 per type | 8/8 | 2/8 | 6/6 | 8/8 | 8/8 | 8/8 | 8/8 | 8/8 |
+| gpt-oss-20b, 8 per type | 6/8 | 0/8 | 6/6 | 7/8 | 8/8 | 8/8 | 8/8 | 8/8 |
+
+</div>
+
+FactCG gets 269 of 272 right, so it is the claim judge. The rules catch changed details, wrong abstentions and wrong answers, but not added claims or wrong citations. That is expected: they are a cheap first filter.
+
+The two LLM judges failed most quote positives, and the fault is partly in the controls. The quote is the first sentence of the gold passage that carries a date or number, whether or not it answers the question. FactCG ignores the question and passes them, while the LLM judges read the question and call them non-answers. Until the quote controls are rebuilt, Tier 2 stays unused. Granite Guardian also needs its thinking mode on, because without it the model calls everything ungrounded, and it takes about 20 seconds per claim.
+
+The relevance judges were tested the same way, against Claude's grades on 300 pairs. Gemma 4 E4B agreed on 48% (Cohen's kappa 0.14), and qwen2.5 14B on 82% (kappa 0.50). Gemma 4 E4B is being replaced as a juror.
+
+One rule sits above all of this: only open-weight judges from families other than the generator's may drive a training decision. Claude's grades evaluate; they never train.
+
+### Metrics
+
+| Metric | Definition |
+|---|---|
+| Correct claims | Share of claims that a gold passage supports |
+| Grounded claims | Share of claims that a passage the model was shown supports |
+| Citation precision | Share of cited claims whose cited passage supports them |
+| Fabrication | Answers with a claim supported by no gold or shown passage, or with a date, number or reference found in none of them |
+| Cites unseen | Answers citing a passage number that never reached the prompt |
+| Wrong abstention | Answerable questions the model declined |
+| Gold hit | A gold passage among those shown |
+| Absent abstention | Questions with no answer in the library that the model correctly declined |
+| Canary pass | The answer states the changed fact and does not abstain |
+
+Samples are averaged within a question first, then across questions, with 95% bootstrap intervals. Two runs are compared question by question with a paired bootstrap.
+
+### Run 011
+
+<figure class="not-prose my-10">
+<a href="/images/projects/gemma-grc-spec-run011-light.svg" class="block" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/gemma-grc-spec-run011-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/gemma-grc-spec-run011-light.svg" alt="Run 011. The eval v3 test split, 442 questions and 8 canaries, goes to three arms: router on with three samples each, router off where identical prompts reuse answers, and closed book with no library and one sample each. All three are scored with one scorer version, and two comparisons follow by paired bootstrap: router on against router off, and library against memory." width="729" height="260" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+<figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Figure 7 · Run 011 design · <a href="/images/projects/gemma-grc-spec-run011-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
+</figure>
+
+Run 011 is the first end-to-end baseline of the system as it ships. It runs on the eval v3 test split, 442 questions, plus all 8 canaries:
+
+- **Router on:** the shipping configuration, three samples per question at temperature 0.7.
+- **Router off:** the same, with the temporal router disabled. Where the router does not change the passages, the prompt is identical, so the answer and its score are reused.
+- **Closed book:** the bare question with no library, one sample, as in the August baselines.
+
+It answers two questions: how much the library is worth compared with the model's memory, and whether the router helps or hurts outside date questions. The eval is a draft until my audit is done, so the results are provisional. Scores can be recomputed after the freeze without generating new answers. The results will appear here in v1.1.
+
+Two measurement bugs surfaced in the first hours of the run, and both were fixed before any answer was scored. The scorer treated a date as unsupported when the passage wrote it in another format. It also accepted citations to passages the context budget had kept out of the prompt.
+
+## Findings so far
+
+| Finding | Evidence | Consequence |
+|---|---|---|
+| Fine-tuning a small model on my notes taught it my style, not my facts | Fabricated details rose from 20% to 48% on a 1B model and from 26% to 36% on a 4B model | The generator ships without an adapter |
+| Retrieval is the largest gain | Plus 0.86 on a five-point scale against closed book (95% CI 0.48 to 1.24) | The library became the product |
+| Fine-tuning the search model paid off where fine-tuning the generator did not | The right passage in the top four rose from 71% to 79% after nine minutes of training | Tune the failing component, not the famous one |
+| The instruments failed before the model did | A judge that scored 4.99 of 5 on everything, a tokenizer call that hid a NaN, a missing query prefix, and a noise floor of about 0.3 points at 50 questions | Every instrument is control-tested, and the test set has 564 questions, not 50 |
+| Date questions failed on retrieval, not reading | Article 113 was not in the top 60 results for "when" questions | The temporal router took the canaries from 6 of 8 to 8 of 8 |
+| The generator misreads | It said the 2026 guidance "does cover generative AI" against a passage saying it does not, and FactCG scored the claim 0.20 | Claim-level judging decides any generator swap |
+
+## What it is for
+
+### Today
+
+- **"Where exactly does it say that, and is it still current?"** A cited answer in seconds, with the version and status of each source.
+- **Regimes side by side.** Incident reporting under DORA and NIS2, or oversight of critical technology providers in the EU and the UK, with both sides cited.
+- **Questions whose answer moved.** The AI Act timetable, SR 26-2, the UK designations: maintained text beats memorized text.
+- **Finding what is missing.** When it cannot find something, that usually marks knowledge that lives in someone's head. In a compliance function, that is key person risk.
+- **A research tool for agents.** My research, content and teaching agents cite primary text through the MCP tool instead of their own recall.
+
+### Not for
+
+- Settling an ambiguous interpretation, predicting how a supervisor will read an answer, or standing in for legal advice. That judgment stays with the professional.
+- Confidential or client material on a personal machine. The regulator-response work below belongs in an organization's own environment.
+
+### Next capabilities
+
+<figure class="not-prose my-10 lg:-mx-24">
+<a href="/images/projects/gemma-grc-spec-next-light.svg" class="block" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/gemma-grc-spec-next-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/gemma-grc-spec-next-light.svg" alt="Two capabilities that follow from the same design. Policy alignment: a regulation is broken into obligations (who must do what, by when), each is matched to the policy clauses that should cover it, a gate classifies it as covered, partial, missing or in conflict, a draft revision is tied to its obligation with both texts cited, and an owner approval and change control gate closes it. Regulator response memory, inside an organization's own environment: a new question from a regulator is matched to past responses with their regulator, date, scope, commitments and facts; a gate checks whether the scope matches, facts have changed or anything contradicts; a first draft follows with sources and flags; and legal and owner review closes it." width="1202" height="282" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+<figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Figure 8 · Policy alignment and regulator response memory · <a href="/images/projects/gemma-grc-spec-next-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
+</figure>
+
+**Policy alignment.** Break a regulation into obligations: who must do what, by when. Match each obligation to the policy clauses that should cover it. Classify each as covered, partially covered, missing or in conflict, with both texts cited side by side. For each gap, draft a revision tied to the obligation it closes.
+
+The draft can be automated; the change cannot, because a policy edit needs an owner, an approval and change control. The error that matters most is a false "covered", so the first metric is precision on "covered" against a hand-labeled set of obligations and clauses.
+
+**Regulator response memory.** Treat every response sent to a supervisor as a guiding document, with its context attached: which regulator, when, the question, the scope, the commitments made and the facts relied on. When a similar question arrives from a different regulator, the assistant would:
+
+1. Find what was said before.
+2. Check that the scope really matches.
+3. Flag facts that have changed since.
+4. Flag anything that would contradict what another regulator was told.
+5. Draft, with sources.
+
+Supervisors share information about the providers they both oversee. The ESAs and the UK authorities signed a memorandum of understanding on critical technology providers in January 2026, and it is in lane 2.
+
+This capability does not belong on a personal computer. Responses to supervisors can be confidential supervisory information, which the supervisor controls, and legal should sign off before any of it is indexed. My project stays on public texts and my own notes, and it proves the methods: what goes into the library, how each passage is labeled, and how each capability is tested.
+
+## What comes next
+
+<figure class="not-prose my-10">
+<a href="/images/projects/gemma-grc-spec-roadmap-light.svg" class="block" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/gemma-grc-spec-roadmap-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/gemma-grc-spec-roadmap-light.svg" alt="Roadmap. Done: in August 2026 fine-tuning on my notes raised fabrication; in August retrieval shipped and the search model was tuned; on 25 September the fail-closed gate, provenance classes and MCP tool; from 25 to 28 September the public lanes and eval v3; on 28 September the temporal router; from 28 to 29 September the judges were tested and Run 011 started. Next: Run 011 results comparing library with memory and router on with off; the 100-pair audit and the eval freeze; fixing the quote controls and settling the Tier 2 judge; retrieval work on stemming, an embedder trial and new canaries; Run 012 comparing Gemma 4 E4B with Gemma 3 4B; and a policy alignment prototype." width="535" height="761" loading="lazy" decoding="async" class="mx-auto w-full max-w-[535px] h-auto" />
+</picture>
+</a>
+<figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Figure 9 · Done and next · <a href="/images/projects/gemma-grc-spec-roadmap-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
+</figure>
+
+Each item has a definition of done.
+
+1. **Run 011 results.** Router on against closed book, and router on against router off, with paired intervals. Done when both comparisons are in this document.
+2. **Freeze eval v3.** My 100-pair audit comes first; if my agreement with Claude is low, the answer key gets rebuilt. Done when the sha256 is recorded.
+3. **Judges.** Rebuild the quote controls from the sentence that answers the question, rerun Granite Guardian and gpt-oss, and decide whether a Tier 2 judge earns its cost. Replace Gemma 4 E4B as a relevance juror. Done when the control table above is rerun with every judge.
+4. **Retrieval.** Add stemming to BM25, trial granite-embedding-english-r2 as the dense model, and add canaries for phrasings that miss. "Do our generative AI models fall under SR 11-7?" currently retrieves no page of SR 26-2. Done when gold hit improves on the frozen set without a canary regressing.
+5. **Run 012, the generator.** Gemma 4 E4B, with thinking off, against Gemma 3 4B behind the same library, with Granite as a control. Claim-level judging decides.
+6. **Policy alignment prototype.** On public texts and a sample policy, measuring false "covered" first.
+7. **Serving.** Offer retrieval as a local tool to the small model my other agents use for local work, with the provenance boundary enforced at the tool.
+
+## Known limitations
+
+- **The generator misreads.** Negation and list scope trip it up. It wrote that the 2026 guidance covers generative AI one sentence before saying it does not. It also wrote that SR 11-7 was superseded "by SR 26-2 and SR 21-8", when SR 26-2 superseded both.
+- **It cites what it never saw.** Early in Run 011, 25 of the first 379 answers cited a passage number beyond those in the prompt. The scorer now counts those as invalid citations.
+- **Eight passages is really six to eight.** The 13,000-character budget cut the prompt to six or seven passages for a quarter of questions.
+- **Phrasing matters.** BM25 has no stemming, and a question that names an old instrument can pull back only that instrument's pages.
+- **It over-answers dates.** Asked about Annex III, the model lists every date in Article 113.
+- **The numbers are provisional.** The eval is a draft until the audit, and every result records the hash of the eval it used.
+- **One machine, one user.** There is no availability, access control or change management beyond what a personal lab needs, and none of this is legal advice.
+
+## Appendix: stack and reproducibility
+
+### Models
+
+<div class="overflow-x-auto">
+
+| Role | Model | License | Where it runs |
+|---|---|---|---|
+| Generator | Gemma 3 4B instruct, 4-bit MLX build | Gemma Terms of Use | The Mac |
+| Dense retrieval, clean build | BGE-small-en-v1.5 | MIT | The Mac |
+| Dense retrieval, local build | BGE-small, fine-tuned on my notes in August | Not distributed | The Mac |
+| Pooling retriever for eval v3 | BGE-M3 | MIT | The Mac |
+| Question writer and relevance judge | Qwen2.5 14B instruct | Apache 2.0 | Ollama on the Mac |
+| Question checker and relevance judge, being replaced | Gemma 4 E4B | Apache 2.0 | Ollama on the Mac |
+| Claim judge | FactCG-DeBERTa-v3-Large | MIT | PyTorch on the Mac |
+| Tier 2 candidates | Granite Guardian 4.1 8B, gpt-oss-20b | Apache 2.0 | Ollama on the Mac |
+| Evaluation-only grader | Claude Sonnet | Commercial terms; outputs never train anything | Hosted; public pairs only |
+
+</div>
+
+### Software
+
+Python 3.12. MLX 0.32.3, with mlx-lm pinned to a commit on its main branch for the CVE-2026-5843 fix. Ollama 0.34.4; since version 0.34, a re-pulled Gemma 4 thinks by default, so every JSON call turns thinking off. FactCG runs on PyTorch with Apple's MPS backend.
+
+### Reproducibility controls
+
+- Chunk IDs are content hashes, and the index refuses to load against a different corpus or embedding model.
+- Every raw source file is hashed at fetch time, with its retrieval date.
+- The question-answering tool decodes greedily. Evaluation runs pin a seed for every question and sample.
+- Every run writes its configuration (model, build, k, router, temperature, eval hash, corpus fingerprint, prompt hash and library versions) and refuses to resume under a different one.
+- Every score records the version of the scorer that produced it, and scores are reused across runs only within a version.
+- 84 unit tests cover the rules, parsers, router and scoring without loading a model.
+
+### Versions of this document
+
+- **v1.0.** The system as it stood on 29 September 2026, before the Run 011 results.

@@ -1,0 +1,31 @@
+flowchart TB
+  subgraph BUILD["BUILD · on the Mac, no model involved"]
+    direction LR
+    PUB["Public lane<br/>58 official sources"] --> LABEL["Parse, chunk, label<br/>version and status"]
+    NOTES["My notes and<br/>course material"] --> GATE{{"Confidentiality gate<br/>fail-closed"}}
+    GATE --> STAMP["Chunk, redact PII,<br/>stamp provenance"]
+    LABEL --> IDX[("Fingerprinted index<br/>BM25 and dense")]
+    STAMP --> IDX
+  end
+  subgraph SERVE["SERVE · no network"]
+    direction LR
+    Q["Question<br/>from me"] --> RET["Hybrid search,<br/>temporal router,<br/>top 8 passages"]
+    RET --> GEN["Gemma 3 4B<br/>grounding prompt"]
+    GEN --> ANS["A citation per claim,<br/>or what is missing"]
+    AG["Question from<br/>my agents"] --> MCP{{"MCP boundary<br/>owner-only"}}
+    MCP --> RET
+  end
+  subgraph MEASURE["MEASURE · clean build only"]
+    direction LR
+    EV["Eval v3<br/>564 questions"] --> RUN["A run changes<br/>one thing"]
+    RUN --> JUDGE{{"Control-tested<br/>judges"}}
+    JUDGE --> SCORE["Scores with<br/>confidence intervals"]
+  end
+  BUILD == "search the index" ==> SERVE
+  SERVE == "every answer scored" ==> MEASURE
+
+  classDef gate stroke:{{ACCENT}},stroke-width:2px,fill:{{ACCENT_FILL}};
+  classDef stop stroke:{{MUTED}},stroke-dasharray:4 3,fill:{{MUTED_FILL}},color:{{MUTED}};
+  classDef out stroke:{{ACCENT}},stroke-width:2px;
+  class GATE,MCP,JUDGE gate;
+  class ANS,SCORE out;

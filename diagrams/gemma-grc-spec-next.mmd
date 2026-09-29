@@ -1,0 +1,22 @@
+flowchart TB
+  subgraph POLICY["POLICY ALIGNMENT"]
+    direction LR
+    REG["Regulation"] --> OBL["Obligations: who<br/>must do what,<br/>by when"]
+    OBL --> MATCH["Policy clauses<br/>that should<br/>cover each one"]
+    MATCH --> CLS{{"Covered, partial,<br/>missing or<br/>in conflict?"}}
+    CLS --> DRAFT["Draft revision tied<br/>to its obligation,<br/>both texts cited"]
+    DRAFT --> OWNER{{"Owner approval,<br/>change control"}}
+  end
+  subgraph MEMORY["REGULATOR RESPONSE MEMORY · inside an organization's own environment"]
+    direction LR
+    NEWQ["New question<br/>from a regulator"] --> FIND["Past responses:<br/>regulator, date, scope,<br/>commitments, facts"]
+    FIND --> CHECK{{"Scope matches?<br/>Facts changed?<br/>Contradiction?"}}
+    CHECK --> FIRST["First draft<br/>with sources<br/>and flags"]
+    FIRST --> LEGAL{{"Legal and<br/>owner review"}}
+  end
+  POLICY ~~~ MEMORY
+
+  classDef gate stroke:{{ACCENT}},stroke-width:2px,fill:{{ACCENT_FILL}};
+  classDef out stroke:{{ACCENT}},stroke-width:2px;
+  class CLS,OWNER,CHECK,LEGAL gate;
+  class DRAFT,FIRST out;

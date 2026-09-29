@@ -1,0 +1,26 @@
+flowchart TB
+  subgraph RETRIEVE["RETRIEVE"]
+    direction LR
+    Q["Question"] --> BM["BM25<br/>keyword ranks"]
+    Q --> DN["BGE-small<br/>dense ranks"]
+    BM --> RRF["Reciprocal rank<br/>fusion"]
+    DN --> RRF
+    RRF --> TI{{"Asks when<br/>something applies?"}}
+    TI -- "yes" --> RT["Up to 2 of its<br/>application<br/>provisions first"]
+    TI -- "no" --> TOP["Top 8 passages"]
+    RT --> TOP
+  end
+  subgraph ANSWER["ANSWER · greedy decoding, on the Mac"]
+    direction LR
+    CTX["Each passage clipped<br/>to 2,000 characters,<br/>13,000 in total"] --> PR["Grounding prompt<br/>four rules"]
+    PR --> GEN["Gemma 3 4B<br/>instruct, 4-bit, MLX"]
+    GEN --> CITED["A citation per claim,<br/>labels carried through"]
+    GEN --> MISS["Or what is missing<br/>and where it would be"]
+  end
+  RETRIEVE ==> ANSWER
+
+  classDef gate stroke:{{ACCENT}},stroke-width:2px,fill:{{ACCENT_FILL}};
+  classDef stop stroke:{{MUTED}},stroke-dasharray:4 3,fill:{{MUTED_FILL}},color:{{MUTED}};
+  classDef out stroke:{{ACCENT}},stroke-width:2px;
+  class TI gate;
+  class CITED,MISS out;
