@@ -1,0 +1,18 @@
+flowchart TB
+  accTitle: Moonbase runtime data flow
+  accDescr: Managed coding workers use the authenticated server, project floors, queue, terminal host, and native CLI. Existing Neural Bridge runtimes supply a private observation snapshot through a bounded read-only projection, with no dispatch path back to those specialists.
+  Browser["Private Moonbase browser"]
+  Server["Authenticated Node server"]
+  Floors["Project floors and work queue"]
+  PTY["Terminal host and screen mirror"]
+  CLI["Native coding CLI or shell"]
+  Existing["Existing Neural Bridge runtimes"]
+  Snapshot["Private observation snapshot"]
+  Reader["Bounded read-only projection"]
+  Browser <-->|"HTTP and WebSocket"| Server
+  Server <--> Floors
+  Floors <--> PTY
+  PTY <--> CLI
+  Existing -->|"Minimal observations"| Snapshot
+  Snapshot --> Reader
+  Reader --> Server

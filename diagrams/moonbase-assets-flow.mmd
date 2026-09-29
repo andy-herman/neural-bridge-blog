@@ -1,0 +1,19 @@
+flowchart TB
+  accTitle: Moonbase asset pipeline
+  accDescr: Original designs and Kling form and material references inform reproducible Blender scripts, not automatically generated meshes. Editable Blender scenes export GLB geometry, materials, and pivots for validation and Three.js controllers. Only the running app produces runtime screenshot evidence.
+  Design["Original character and prop designs"]
+  Reference["Kling form and material references"]
+  Script["Reproducible Blender scripts"]
+  Source["Editable Blender scenes"]
+  Export["GLB geometry, materials, and pivots"]
+  Check["Manifest and asset validation"]
+  Runtime["Three.js controllers and lighting"]
+  Evidence["Real browser screenshots"]
+  Design --> Script
+  Design --> Reference
+  Reference -.->|"Art direction, not a mesh"| Script
+  Script --> Source
+  Source --> Export
+  Export --> Check
+  Check --> Runtime
+  Runtime --> Evidence

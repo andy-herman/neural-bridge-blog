@@ -1,0 +1,22 @@
+flowchart TB
+  accTitle: Moonbase observation and freshness flow
+  accDescr: Validate the registry and optional writer slots. Invalid or unreadable input is visibly unavailable. Valid observations join real identities; registry-only identities remain unobserved, while each writer is evaluated independently for stale, stopped, or fresh measured execution state. Resident state includes source coverage.
+  File["Registry and optional writer slots"]
+  Validate["Validate schema, bounds, and timestamps"]
+  Error["Visible unavailable state"]
+  Join["Join observations to real identities"]
+  None["No observation: unobserved"]
+  Age["Evaluate each writer independently"]
+  Old["Stale or stopped source"]
+  Fresh["Fresh measured execution state"]
+  UI["Resident state plus source coverage"]
+  File --> Validate
+  Validate -->|"Invalid or unreadable"| Error
+  Validate -->|"Valid"| Join
+  Join -->|"Registry only"| None
+  Join -->|"Writer present"| Age
+  Age --> Old
+  Age --> Fresh
+  None --> UI
+  Old --> UI
+  Fresh --> UI

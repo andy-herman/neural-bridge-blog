@@ -78,11 +78,17 @@ draft: true
 title: "Project Name"
 description: "One-line description"
 status: active                # or paused / archived
+unlisted: false               # optional; hide from discovery without removing the URL
 repoUrl: https://github.com/...
 siteUrl: https://...
 started: 2026-01-15
 ---
 ```
+
+Set `unlisted: true` to hide a project from the Projects page, home and Writing
+feeds, featured navigation, and sitemap. Its existing URL still works with
+`noindex, nofollow`; this is not access control. Keep the flag consistent in
+English and Korean entries. The default is `false`, independent of project status.
 
 ## Workflows
 

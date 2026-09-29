@@ -2,6 +2,7 @@
 title: A 1920s café in Seoul
 description: A concept for a 1920s café and scratch bakery by day, live jazz in the evening and a Prohibition-era bar at night, in Seoul. The research runs in staged rounds, with confidence levels and flags on unverified claims, and there is no lease until a set of gates clears.
 status: active
+unlisted: true
 started: 2026-09-17
 tagline: Café and bakery by day, live jazz in the evening, a Prohibition-era bar at night.
 featured: 3

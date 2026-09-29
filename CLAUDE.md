@@ -23,7 +23,8 @@ Five collections are defined in `src/content/config.ts`: `posts`, `research`, `p
 
 `projects` (`src/content/projects/*.md`, project hub entries):
 - Required: `title`, `description`, `status` (enum: `active`, `paused`, `archived`), `started` (date).
-- Optional: `repoUrl`, `siteUrl` (valid URLs).
+- Optional: `repoUrl`, `siteUrl` (valid URLs), `tagline`, `featured` (integer), `unlisted` (defaults `false`).
+- `unlisted: true` hides a project from listings, featured navigation, and sitemap but keeps its direct URL with `noindex, nofollow`. This is not access control. Keep English and Korean visibility flags consistent.
 
 `buildlog` entries are mostly written by the daily sync workflow (`.github/workflows/sync-buildlog.yml` + `.github/scripts/sync-buildlog.mjs`); it never overwrites existing files and uses the `pr_url` field for idempotency. Hand-curated entries leave `pr_url` unset. `agents` entries power the agent roster pages; `scripts/fetch-agent-avatars.mjs` reads their `client_id` fields.
 
