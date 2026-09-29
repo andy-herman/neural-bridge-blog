@@ -1,0 +1,307 @@
+---
+title: "Building Moonbase: a small world for real agents"
+description: "Turning an agent office into an original Blender-built lunar workspace, without confusing a cute character with a running agent."
+pubDate: 2026-09-29
+project: moonbase
+tags: ["moonbase", "neural-bridge", "agent-office", "blender", "threejs", "build-in-public"]
+banner: ../../assets/banners/building-moonbase.png
+bannerAlt: "The private Moonbase habitat and real observation panel, showing 14 observed identities and zero model subprocesses running at capture, with the model-subprocess scope badge visible."
+draft: false
+---
+
+Moonbase started with a simple idea: give the agents behind Neural Bridge a
+place I could walk around.
+
+Not a process list with cartoon icons. A small lunar research station, with
+original alien-dinosaur residents, working terminals, project boards, and a
+clear distinction between an agent that is busy and one I have not actually
+observed.
+
+The last part turned out to matter as much as the characters.
+
+This is a private, local workspace. The source is private for now, and this
+article is not an invitation into the operational system. The
+[Moonbase project page](/projects/moonbase) tracks the build.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/moonbase/workspace-overview.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/moonbase/workspace-overview.webp" alt="Moonbase's lunar habitat beside a real-observation panel showing 14 registered and observed specialists and zero model subprocesses running, with the read-only model-subprocess scope badge visible." width="1920" height="1080" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The private Moonbase habitat running with real read-only Neural Bridge observations. At capture, fourteen registered identities had fresh observations and no model subprocesses were observed running. <a href="/images/moonbase/workspace-overview.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+## Keep the machinery, change the world
+
+The starting point was
+[Agent Office](https://github.com/AgentSystemLabs/agent-office/tree/44aecc1ecf175939bce2049123626aa2bcddd7e2),
+by AgentSystemLabs. It is MIT-licensed, and Moonbase preserves that attribution.
+I pinned the starting revision rather than treating a fast-changing upstream
+branch as a stable specification.
+
+Agent Office is much more than a Three.js room. It launches real coding CLIs
+inside pseudoterminals. A separate terminal host keeps their screens available
+through a server reload. A headless terminal mirror turns those screens into
+both interactive browser terminals and small laptop displays in the scene.
+
+It also has project floors, worktrees, GitHub issue and pull-request boards,
+queues, meetings, chat, a shared whiteboard, and voice and screen-sharing paths.
+Rebuilding only the room would have discarded most of what made the project
+interesting.
+
+Moonbase keeps that runtime. The larger visual changes happen around it:
+original characters, a lunar setting, cleaner equipment, quieter labels, and
+wayfinding that belongs to the new environment.
+
+The laboratory now uses five original Blender-exported prop types: workstations,
+seats, ring lights, display frames, and seed-pod planters. They replace repeated
+equipment throughout the room rather than sitting in a separate showcase.
+
+That creates a useful constraint. Moving a desk visually is not harmless if
+the interaction target and collision model remain where the old desk was.
+Replacing a worker with a static model is not a complete change if typing,
+walking, waiting, held objects, and cleanup stop working.
+
+The geometry, controller, and interaction contracts have to agree.
+
+## Two kinds of resident
+
+The most important architecture decision was not a renderer choice. It was
+separating **managed workers** from **observed specialists**.
+
+Managed workers are the coding processes Moonbase launches at desks. They have
+real terminals, native permission prompts, and the existing queue and worktree
+machinery.
+
+Observed specialists are the Neural Bridge agents that already run through
+Discord and Telegram. Showing Luna or Loid in Moonbase must not start another
+copy, attach an invented terminal, or give either agent new permissions.
+
+<div class="overflow-x-auto">
+
+| Resident | Source of truth | What Moonbase can claim |
+|---|---|---|
+| Managed coding worker | Its process, terminal, and provider lifecycle signals | The measured state of that worker |
+| Observed Neural Bridge specialist | Its real definition plus optional runtime observations | Only what the observer actually measured |
+| Registered but unobserved specialist | The plugin/configuration registry | The identity exists, not that it is connected or working |
+
+</div>
+
+<figure class="not-prose my-10">
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Moonbase runtime data-flow diagram">
+<a href="/images/projects/moonbase-runtime-flow-light.svg" class="block min-w-[503px]" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/moonbase-runtime-flow-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/moonbase-runtime-flow-light.svg" alt="Two paths into Moonbase. The private browser connects to an authenticated server, project floors and queue, a terminal host and screen mirror, and a native coding CLI. Existing Neural Bridge runtimes can supply minimal observations through a private snapshot and bounded read-only projection. There is no dispatch arrow back to the specialists." width="503" height="576" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+</div>
+<figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Managed workers and read-only observation, not another orchestrator. Scroll horizontally if needed, or <a href="/images/projects/moonbase-runtime-flow-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">open full size</a>.</figcaption>
+</figure>
+
+The observation path has no return arrow that dispatches work to those
+specialists. It is deliberately not a second orchestrator.
+
+## Blender assets with a runtime contract
+
+The residents are six original alien-dinosaur designs. Their frills, plates,
+ear fins, crests, shells, and tails make them distinguishable without needing
+six unrelated art styles.
+
+The assets begin as reproducible Blender scripts and an editable `.blend`
+scene. They export to GLB with predictable orientation, bounds, materials, and
+named pivots. The browser loads those files into the existing character
+controllers.
+
+This is different from making an attractive render and then approximating it
+with unrelated shapes in JavaScript. The exported models are the ones the app
+actually draws.
+
+<figure class="not-prose my-10">
+<a href="/images/projects/moonbase-assets-flow-light.svg" class="block max-w-[360px] mx-auto" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/moonbase-assets-flow-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/moonbase-assets-flow-light.svg" alt="Original character and prop designs, with Kling form and material references as art direction rather than meshes, inform reproducible Blender scripts. Editable Blender scenes export GLB geometry, materials, and pivots. Manifest and asset validation precede Three.js controllers and lighting, and only the running app produces browser screenshot evidence." width="360" height="653" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+<figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Concept references are not runtime meshes. <a href="/images/projects/moonbase-assets-flow-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+Kling helped with form and shading studies: softer transitions between body
+parts, more deliberate material response, and stronger contact shadows. It
+did not generate the runtime meshes.
+
+One character study also omitted two of the six species. That was not a reason
+to delete working models or describe the output as a complete character set.
+I kept all six original designs and used the usable material direction across
+the set.
+
+The same principle applies to the laboratory props. A concept can suggest a
+good rounded shell or a convincing shaded surface while getting a seat or
+support wrong. The implemented model still needs usable clearance, a stable
+footprint, and an interaction target a person can reach.
+
+An asset manifest and binary checks help catch broken exports. They cannot
+tell me whether a face reads at the actual office camera distance. That still
+requires opening the app and looking at the result.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/moonbase/original-characters.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/moonbase/original-characters.webp" alt="The actual Moonbase character picker previews a mint Comet Ceratops Blender model, offers six original species and body, belly, and equipment colors, and retains the real-observation panel and model-subprocess scope badge." width="1920" height="1080" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The actual character picker renders an original Blender GLB. Six species and their color choices are available in the working app. <a href="/images/moonbase/original-characters.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+## A registry is not a heartbeat
+
+The real Neural Bridge registry contained fourteen plugin roles and thirteen
+Discord registrations. Loid is the role without a Discord registration in that
+configuration; his Telegram and Council paths still matter.
+
+It would have been easy to load those names and animate everyone as working.
+It would also have been wrong.
+
+The first real integration check was intentionally less exciting: export the
+actual registry without starting a model or bot, load it through Moonbase's
+authenticated reader, and show all fourteen identities as **unobserved**.
+The result had zero runtime writers, not fourteen healthy agents.
+
+The optional observer uses a versioned local JSON snapshot. Each runtime owns
+its own source slot, instance identity, heartbeat, counters, and bounded
+events. Writes replace the file atomically. Moonbase's server reads and
+validates it, then sends a bounded projection to the browser.
+
+The snapshot contains identities and minimal execution state. It excludes
+prompts, replies, conversation identifiers, transcripts, tool arguments,
+credentials, and private filesystem paths.
+
+The unit of observation is a **model subprocess**, not a whole user task.
+A successful model process does not prove that a tool action succeeded or that
+the user received the final reply. Telegram connectivity is left unmeasured
+where there is no actual connection signal.
+
+## Freshness belongs to each writer
+
+The opt-in observer emits a heartbeat every ten seconds. Moonbase treats a
+running source as stale when its own heartbeat is more than forty-five seconds
+old. Those are implementation rules; a particular rollout still needs measured
+observations.
+
+The important detail is each source's own timestamp. If Discord stops reporting
+but Telegram keeps writing, a new outer file timestamp cannot make Discord
+healthy again.
+
+<figure class="not-prose my-10 lg:-mx-24">
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Moonbase observation and freshness diagram">
+<a href="/images/projects/moonbase-observation-flow-light.svg" class="block min-w-[777px]" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/moonbase-observation-flow-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/moonbase-observation-flow-light.svg" alt="Validate the registry and optional writer slots for schema, bounds, and timestamps. Invalid or unreadable input is visibly unavailable. Join valid observations to real identities: registry-only identities remain unobserved, and each writer is evaluated independently for stale or stopped versus fresh measured execution state. The UI shows resident state together with source coverage." width="777" height="560" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+</div>
+<figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Freshness belongs to each writer, not the outer file. Measured state covers model subprocesses, not task delivery. Scroll horizontally if needed, or <a href="/images/projects/moonbase-observation-flow-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">open full size</a>.</figcaption>
+</figure>
+
+Overlapping invocations also need real accounting. One completed call must not
+make a specialist idle while another call is still running. Cancelling an
+async waiter does not necessarily stop the subprocess running in its executor
+thread.
+
+Restarting the observer adds another limit: it may know that it lost an
+observation without knowing that the old child process died. That is why
+"interrupted" means observation lost, not successful completion or a verified
+kill.
+
+These distinctions are less visually dramatic than a busy animation. They
+are more useful when deciding whether an agent actually needs attention.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/moonbase/source-coverage.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/moonbase/source-coverage.webp" alt="Loid's read-only detail view shows no Discord registration, Telegram Council and Loid sources marked transport unmeasured, zero fresh active model subprocesses, and an explicit model-subprocess-only scope notice." width="1920" height="1080" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">Loid's source coverage explicitly separates registry membership, model-subprocess observations, and unmeasured Telegram connectivity. <a href="/images/moonbase/source-coverage.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+## A guard failure was an interface mismatch
+
+One integration failure happened before the telemetry code could be written.
+The repository's write guard expected a structured edit input with a file
+path. Copilot supplied a freeform patch string.
+
+The guard crashed instead of inspecting the edit.
+
+The fix was not to turn the guard off. It was to adapt the input: inspect every
+added, updated, deleted, or moved file through the same path policy, and reject
+mutations that could not be understood.
+
+A standalone check was not the finish line. The coding session had to make a
+normal guarded edit successfully. That was the useful evidence that the
+compatibility repair worked where it mattered.
+
+## What the current evidence establishes
+
+**Evidence as of September 29, 2026.**
+
+The local build has exercised real GLB loading, an actual harmless shell and
+terminal, terminal search and changes, a paused queue flow, shared whiteboard
+updates between two clients, read-only authenticated GitHub board refreshes,
+and desktop/touch browser interaction.
+
+The actual registry-only producer output has also passed through the strict
+consumer and real browser UI. Synthetic lifecycle fixtures exercise missing,
+malformed, stale, disconnected, stopped, overlapping, and future-timestamp
+cases. A visible fixture badge keeps those demonstrations separate from
+observed production activity.
+
+There are limits. The inherited coding-provider paths are covered with safe
+test processes, not paid model conversations. Physical microphone use,
+cross-network screen sharing, and remote hosting have not been demonstrated
+by those checks. A desktop browser emulating touch is not a substitute for a
+physical-phone session.
+
+The separately authorized live pilot has now reached the existing consumer.
+Four independent writers advanced their heartbeats across three bounded
+samples. Thirteen Discord connections were measured through real gateway
+callbacks, while Telegram connectivity stayed explicitly unmeasured. No model
+invocation occurred during those samples, and none was manufactured for a
+screenshot.
+
+The first activation used a reversible login-session setting. The durable
+follow-up now stores the opt-in in an ignored, private local configuration file.
+After restarting the existing services with that temporary setting removed,
+all four sources independently advanced again. The normal updater was restored,
+and the already-running Moonbase workspace read the fresh data without another
+app restart.
+
+The existing login services read the configuration when they start. That is
+the basis for persistence across logout and reboot; I did not log out or reboot
+the machine as part of this release. A fresh clone still needs its own private
+configuration. The screenshots show the genuine earlier live-pilot state,
+not a manufactured busy scene.
+
+A green code check alone would not have established those runtime facts.
+Likewise, a fresh observer heartbeat is not evidence that a model completed a
+user task.
+
+## A website address is a separate boundary
+
+Moonbase could eventually have a private hostname alongside neural-bridge.dev.
+That does not mean attaching real terminals to a public demo.
+
+The current server depends on persistent local processes and working trees.
+A separate execution host with an identity-gated route is a more direct fit
+than treating it as another static page in the blog.
+
+For now, the useful result is the private workspace itself: a coherent small
+world around real tools, with original residents and a status model that
+admits what it does not know.
+
+## Attribution
+
+Moonbase is derived from
+[Agent Office by AgentSystemLabs](https://github.com/AgentSystemLabs/agent-office/tree/44aecc1ecf175939bce2049123626aa2bcddd7e2),
+under the
+[MIT license](https://github.com/AgentSystemLabs/agent-office/blob/44aecc1ecf175939bce2049123626aa2bcddd7e2/LICENSE).
+The original copyright and permission notice are retained in the implementation.
+The data-flow diagrams are Mermaid sources rendered to static light and dark
+SVGs, so reading them does not require a client-side diagram runtime.
