@@ -7,8 +7,8 @@ export interface Props {
 const { wide = false } = Astro.props;
 const widthClass = wide ? 'max-w-6xl' : 'max-w-3xl';
 
-// Projects menu: any English project entry with `featured` set, in that order.
-const featuredProjects = (await getCollection('projects', ({ id, data }) => !id.startsWith('ko/') && data.featured !== undefined))
+// Projects menu: listed English projects with `featured` set, in that order.
+const featuredProjects = (await getCollection('projects', ({ id, data }) => !id.startsWith('ko/') && !data.unlisted && data.featured !== undefined))
   .sort((a, b) => (a.data.featured ?? 0) - (b.data.featured ?? 0));
 
 type NavItem = { href: string; label: string; projects?: typeof featuredProjects };

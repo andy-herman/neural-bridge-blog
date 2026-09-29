@@ -34,7 +34,7 @@ const research = (await getCollection('research', ({ data, id }) => !data.draft 
     date: p.data.pubDate,
   }));
 
-const projects = (await getCollection('projects', ({ id }) => !id.startsWith('ko/')))
+const projects = (await getCollection('projects', ({ id, data }) => !id.startsWith('ko/') && !data.unlisted))
   .map<UnifiedItem>(p => ({
     type: 'project',
     href: `/projects/${p.slug}`,

@@ -24,7 +24,7 @@ const KoContent = koEntry ? (await koEntry.render()).Content : null;
 const allPosts = (await getCollection('posts', ({ data, id }) => !data.draft && data.project === project.slug && !id.startsWith('ko/')))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 ---
-<BaseLayout title={`${project.data.title} · neural-bridge.dev`} description={project.data.description}>
+<BaseLayout title={`${project.data.title} · neural-bridge.dev`} description={project.data.description} noindex={project.data.unlisted}>
   <header class="mb-10 pt-2">
     <div class="flex flex-wrap items-baseline gap-x-4 font-mono text-[11px] tracking-wider uppercase text-cream-800 dark:text-cream-300 mb-4">
       <span class={project.data.status === 'active' ? 'text-rust-500' : ''}>{project.data.status}</span>

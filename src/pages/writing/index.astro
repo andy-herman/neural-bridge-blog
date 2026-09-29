@@ -15,7 +15,7 @@ const allResearch = (await getCollection('research', ({ data, id }) => !data.dra
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 const recentResearch = allResearch.slice(0, RECENT_PER_SECTION);
 
-const allProjects = (await getCollection('projects', ({ id }) => !id.startsWith('ko/')))
+const allProjects = (await getCollection('projects', ({ id, data }) => !id.startsWith('ko/') && !data.unlisted))
   .sort((a, b) => b.data.started.valueOf() - a.data.started.valueOf());
 const recentProjects = allProjects.slice(0, RECENT_PER_SECTION);
 

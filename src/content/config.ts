@@ -31,6 +31,7 @@ const projects = defineCollection({
     title: z.string(),
     description: z.string(),
     status: z.enum(['active', 'paused', 'archived']),
+    unlisted: z.boolean().default(false),
     repoUrl: z.string().url().optional(),
     siteUrl: z.string().url().optional(),
     started: z.coerce.date(),
