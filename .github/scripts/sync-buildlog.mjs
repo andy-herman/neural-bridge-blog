@@ -13,6 +13,7 @@
 // existing entries' `pr_url` frontmatter).
 //
 // Skips:
+//   - PRs listed in .github/buildlog-skip.txt
 //   - Bot-authored PRs (Dependabot, GitHub Actions, etc.)
 //   - PRs whose title starts with "chore("
 //   - PRs whose title starts with "Bump " (Dependabot fallback)
@@ -42,6 +43,9 @@ const REPOS = [
 
 const FETCH_LIMIT = 50;
 const BUILDLOG_DIR = path.resolve('src/content/buildlog');
+// Merged PRs that are public on GitHub but are not site material. One URL per
+// line; `#` starts a comment. A listed URL counts as already represented.
+const SKIP_FILE = path.resolve('.github/buildlog-skip.txt');
 
 const HARDENING_SCOPES = /\bfeat\((?:daemon|launchd|caffeinate|reload|logging|hardening|launchctl|launch|infra)[^)]*\)/i;
 
@@ -99,7 +103,20 @@ async function existingPRUrls() {
     const linkMatches = raw.matchAll(/url:\s*["']?(https:\/\/github\.com\/[^"'\s]+\/pull\/\d+)["']?/g);
     for (const m of linkMatches) out.add(m[1]);
   }
+  for (const url of await skippedPRUrls()) out.add(url);
   return out;
+}
+
+async function skippedPRUrls() {
+  let raw;
+  try {
+    raw = await fs.readFile(SKIP_FILE, 'utf-8');
+  } catch {
+    return [];
+  }
+  return raw.split(/\r?\n/)
+    .map(line => line.replace(/#.*/, '').trim())
+    .filter(line => /^https:\/\/github\.com\/[^\s]+\/pull\/\d+$/.test(line));
 }
 
 // ---------- gh API call ----------
@@ -144,7 +161,10 @@ function shouldSkip(pr) {
 function cleanTitle(title) {
   // Drop conventional-commit prefix: "feat(scope): foo" → "foo"
   // Capitalize first letter for nicer rendering.
-  const stripped = title.replace(/^[a-z]+\([^)]*\)\s*:\s*/i, '').replace(/^[a-z]+\s*:\s*/i, '');
+  // Also drop workflow markers such as "[skip-tweet]": they steer the tweet
+  // workflow and have no place in a public title.
+  const stripped = title.replace(/^[a-z]+\([^)]*\)\s*:\s*/i, '').replace(/^[a-z]+\s*:\s*/i, '')
+    .replace(/\s*\[skip[- ][a-z]+\]/gi, '').trim();
   return stripped.charAt(0).toUpperCase() + stripped.slice(1);
 }
 

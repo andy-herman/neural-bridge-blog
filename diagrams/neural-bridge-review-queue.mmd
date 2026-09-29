@@ -1,0 +1,30 @@
+flowchart LR
+  subgraph IN["PRODUCERS"]
+    direction TB
+    GATE["Filing gate:<br/>quarantined captures"]
+    CAN["Memory canary"]
+    DEP["Deploy watcher"]
+    WD["Scheduled-output<br/>watchdogs"]
+  end
+  subgraph Q["REVIEW QUEUE · ON THE MAC"]
+    direction TB
+    STORE[("Items and an<br/>append-only event log")] --> PROBE{{"Daily read-back probe,<br/>pusher heartbeat"}}
+    PROBE -. "stale" .-> WATCH["Separate watcher<br/>alerts directly"]
+  end
+  subgraph TG["LUNA ON TELEGRAM"]
+    direction TB
+    CARD["A card with buttons"] --> DEC{{"I decide. Publishing<br/>or deleting takes<br/>a second tap"}}
+  end
+  subgraph DONE["APPLIED"]
+    direction TB
+    PR["Capture filed or rejected<br/>through a merged pull request"]
+    ACK["Alert acknowledged"]
+  end
+  IN ==> Q ==> TG ==> DONE
+
+  classDef gate stroke:{{ACCENT}},stroke-width:2px,fill:{{ACCENT_FILL}};
+  classDef stop stroke:{{MUTED}},stroke-dasharray:4 3,fill:{{MUTED_FILL}},color:{{MUTED}};
+  classDef out stroke:{{ACCENT}},stroke-width:2px;
+  class PROBE,DEC gate;
+  class WATCH stop;
+  class PR,ACK out;
