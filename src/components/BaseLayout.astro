@@ -16,13 +16,20 @@ export interface Props {
   // flips them, so their routes set this; the sitemap filter in
   // astro.config.mjs drops the same URLs.
   noindex?: boolean;
+  // Social preview image for this page (a post's banner). Without one, the
+  // site-wide square /og-image.png is used with a small summary card.
+  image?: { src: string; width: number; height: number; alt?: string };
 }
 const {
   title,
   description = 'Build-in-public hub for Neural Bridge and other projects.',
   wide = false,
   noindex = false,
+  image,
 } = Astro.props;
+const og = image
+  ? { src: new URL(image.src, Astro.site).href, width: image.width, height: image.height, alt: image.alt }
+  : { src: new URL('/og-image.png', Astro.site).href, width: 1024, height: 1024, alt: undefined };
 
 const widthClass = wide ? 'max-w-6xl' : 'max-w-2xl';
 ---
@@ -49,11 +56,13 @@ const widthClass = wide ? 'max-w-6xl' : 'max-w-2xl';
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content={new URL('/og-image.png', Astro.site).href} />
-    <meta property="og:image:width" content="1024" />
-    <meta property="og:image:height" content="1024" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:image" content={new URL('/og-image.png', Astro.site).href} />
+    <meta property="og:image" content={og.src} />
+    <meta property="og:image:width" content={String(og.width)} />
+    <meta property="og:image:height" content={String(og.height)} />
+    {og.alt && <meta property="og:image:alt" content={og.alt} />}
+    <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:image" content={og.src} />
+    {og.alt && <meta name="twitter:image:alt" content={og.alt} />}
 
     <title>{title}</title>
   </head>

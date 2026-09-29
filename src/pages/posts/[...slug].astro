@@ -1,5 +1,6 @@
 ---
 import { getCollection, getEntry } from 'astro:content';
+import { Image, getImage } from 'astro:assets';
 import BaseLayout from '../../components/BaseLayout.astro';
 import Subscribe from '../../components/Subscribe.astro';
 import ReadingProgress from '../../components/ReadingProgress.astro';
@@ -25,13 +26,37 @@ try {
 } catch { /* no Korean version yet */ }
 const KoContent = koEntry ? (await koEntry.render()).Content : null;
 
+// Banner: shown at the top of the post, and a 1200px JPEG of it is the social
+// preview (LinkedIn and X crop it to about 1.91:1 and 2:1, so keep the subject centred).
+const banner = post.data.banner;
+const social = banner
+  ? await getImage({ src: banner, width: Math.min(1200, banner.width), format: 'jpg', quality: 82 })
+  : null;
+const socialImage = social
+  ? { src: social.src, width: Number(social.attributes.width), height: Number(social.attributes.height),
+      alt: post.data.bannerAlt }
+  : undefined;
+
 const dateStr = post.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
 const minutes = readingTime(post.body);
 ---
-<BaseLayout title={`${post.data.title} · neural-bridge.dev`} description={post.data.description} noindex={post.data.draft}>
+<BaseLayout title={`${post.data.title} · neural-bridge.dev`} description={post.data.description} noindex={post.data.draft} image={socialImage}>
   <ReadingProgress />
 
   <article>
+    {banner && (
+      <figure class="-mx-6 sm:mx-0 mb-10">
+        <Image
+          src={banner}
+          alt={post.data.bannerAlt ?? ''}
+          widths={[640, 960, 1344, 1920]}
+          sizes="(min-width: 720px) 672px, 100vw"
+          loading="eager"
+          fetchpriority="high"
+          class="w-full aspect-video object-cover sm:rounded-lg"
+        />
+      </figure>
+    )}
     <header class="mb-10 pt-2">
       <div class="flex flex-wrap items-baseline gap-x-4 font-mono text-[11px] tracking-wider uppercase text-cream-800 dark:text-cream-300 mb-5">
         <time datetime={post.data.pubDate.toISOString()}>{dateStr}</time>

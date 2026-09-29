@@ -2,16 +2,27 @@ import { defineCollection, z } from 'astro:content';
 
 const posts = defineCollection({
   type: 'content',
-  schema: z.object({
-    title: z.string(),
-    description: z.string(),
-    pubDate: z.coerce.date(),
-    updatedDate: z.coerce.date().optional(),
-    project: z.string().optional(),
-    tags: z.array(z.string()).default([]),
-    linkedinUrl: z.string().url().optional(),
-    draft: z.boolean().default(false),
-  }),
+  schema: ({ image }) =>
+    z
+      .object({
+        title: z.string(),
+        description: z.string(),
+        pubDate: z.coerce.date(),
+        updatedDate: z.coerce.date().optional(),
+        project: z.string().optional(),
+        tags: z.array(z.string()).default([]),
+        linkedinUrl: z.string().url().optional(),
+        draft: z.boolean().default(false),
+        // Optional banner: a 16:9 image (1920 x 1080 is ideal) in src/assets/banners/,
+        // referenced relative to the post file (../../assets/banners/<slug>.jpg). It
+        // sits at the top of the post and becomes the post's social preview image.
+        banner: image().optional(),
+        bannerAlt: z.string().optional(),
+      })
+      .refine((d) => !d.banner || (d.bannerAlt ?? '').trim().length > 0, {
+        message: 'bannerAlt is required when banner is set',
+        path: ['bannerAlt'],
+      }),
 });
 
 const projects = defineCollection({

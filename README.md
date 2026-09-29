@@ -44,9 +44,16 @@ pubDate: 2026-05-11
 project: neural-bridge       # optional — links to a project hub entry
 tags: [tag1, tag2]
 linkedinUrl: https://...     # optional — set after cross-posting
+banner: ../../assets/banners/<slug>.jpg   # optional — 16:9, 1920 x 1080 ideal
+bannerAlt: "What the image shows"         # required when banner is set
 draft: true                  # cron flips to false at scheduled time
 ---
 ```
+
+A banner sits at the top of the post, and a 1200px JPEG of it becomes the post's
+social preview (`og:image`, a large X card). Put the file in `src/assets/banners/`;
+Astro resizes it and serves modern formats. Keep the subject centred: LinkedIn and X
+crop previews to about 1.91:1 and 2:1.
 
 ### Research frontmatter (`src/content/research/*.mdx`)
 
