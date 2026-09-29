@@ -1,0 +1,88 @@
+---
+title: "Green for Ten Weeks: When an AI Control Passes Every Check and Does Nothing"
+description: "A Neural Bridge conversation-capture path was dead for ten weeks while every log line said it was fine. Why AI governance frameworks and audits are not built to catch that, and how the canary I built afterwards missed the next one."
+pubDate: 2026-10-12
+project: neural-bridge
+tags: ["neural-bridge", "ai-governance", "monitoring", "audit", "build-in-public"]
+draft: true
+---
+
+In early August I went looking for something else entirely and found that one of my own AI systems had been quietly broken since late May.
+
+The component in question captures conversations into a persistent memory store. It ran every time it was called. It threw no exceptions. Every log line said it was fine. It had not written a usable record in ten weeks.
+
+I want to be precise about how it failed, because the shape of the failure is the whole point.
+
+The code was written to degrade gracefully. If the memory service was unreachable, return empty. If the file was missing, return empty. If the response came back malformed, return empty. Every one of those is a defensible decision on its own. You do not want a missing file to take down the daemon. Collectively, they built a system that could lose most of its function without emitting a single error.
+
+The specific cause of this outage was narrower: failures were swallowed at debug log level. The store for Luna, my assistant agent, sat at 10 messages while the code looked healthy, because nothing reached a level that would show up in the logs. The [fix on 2026-08-02](https://github.com/andy-herman/neural-bridge/commit/0836967) made two changes. Failures now log at warning, and the first successful submit per process logs at info. The second change matters as much as the first, because it means the logs positively confirm that the path works.
+
+Then I found two more like it. A weekly summarisation job that had produced one file in its lifetime, for one agent, and that file opened with the model explaining that its write had been blocked. Every other run produced nothing. And Luna's notes file, silently discarding the half of itself that held her operating rules and keeping a changelog instead. That one became [its own post](/posts/tuned-for-a-model-that-no-longer-exists). Three subsystems, three separate failures, all of them invisible, all of them reporting healthy.
+
+## The thing that makes this hard is that nothing went wrong
+
+Standard monitoring is built on alerting when something breaks. An error is thrown, a threshold is crossed, a check returns non-zero, and someone gets paged.
+
+None of that fires here. There was no error. The system did exactly what it was written to do, which was to fail quietly and keep going. A healthy system and a dead one produced byte-identical output: nothing.
+
+That is not a monitoring gap you can close by adding more alerts, because there is no event to alert on. The only thing that distinguishes the two states is whether success is still happening. You have to assert on the presence of expected output, not the absence of errors.
+
+In site reliability engineering this is old news. It is a heartbeat, a dead man's switch, a check-in monitor. The process has to actively signal that it is alive on a schedule, and silence is the alarm.
+
+I have not found that pattern required in any major AI governance framework.
+
+## Where this collides with how we audit
+
+Spend any time in GRC and you know the distinction between design effectiveness and operating effectiveness. Was the control built correctly, and did it actually work.
+
+SOC 2 makes it explicit. A Type I report asks whether the control could work, at a point in time. A Type II asks whether it did work, over a period, by sampling. That sampling is the load-bearing part, and it is where a silently failing control lives very comfortably.
+
+Consider what my dead capture path would have produced for an auditor. No exceptions in the logs, because it threw none. Clean evidence from every sampled period, because the sampled artifacts look identical whether the thing worked or not. And no reason for the auditor to ask about the periods that were not sampled: nothing in the sampled evidence distinguishes a control that worked from one whose output quietly went to zero between sampled dates.
+
+I am not arguing auditors are careless. A diligent auditor running additional procedures could find this. I am arguing that the standard methodology does not require anyone to look for it, and that a gracefully degrading AI component is unusually good at occupying the space between test dates.
+
+## What the frameworks actually say
+
+I went and read them properly rather than trusting my memory of them, and the results are more interesting than "the frameworks are behind."
+
+MEASURE 2.4 of NIST's AI Risk Management Framework reads: "The functionality and behavior of the AI system and its components, as identified in the MAP function, are monitored when in production." The NIST Playbook is more concrete. Among its suggested actions for that subcategory: "Verify alerts are in place for when distributions in new input data or generated predictions observed in production differ from pre-deployment test outcomes, or when anomalies are detected." Read that carefully. Verifying an alert is in place is a configuration check. An alert wired to a monitoring process that has silently stopped running is, in every technical sense, in place.
+
+ISO/IEC 42001 gets closer. Annex A control A.6.2.6, AI system operation and monitoring, has the organisation define and document the elements needed for the ongoing operation of the AI system, at minimum system and performance monitoring, repairs, updates and support. Control A.6.2.8, AI system recording of event logs, has the organisation determine at which life-cycle phases event logging is enabled. That is a logging requirement, not a liveness requirement. Clause 9.1, on monitoring, measurement, analysis and evaluation, requires documented information as evidence of the results. That is the strongest language of the three. But 42001 is a management systems standard, and auditors sample the evidence that monitoring happened. The monitoring system inherits exactly the same operating effectiveness gap, one level up. And that evidence shows that monitoring was performed, not that the monitored thing was still producing output, which is the failure I am describing.
+
+The EU AI Act, in Article 12(1), requires that high-risk AI systems technically allow for the automatic recording of events over the lifetime of the system. That is a design capability obligation. Nothing in it requires a heartbeat proving the logging subsystem is still alive. One caveat that matters, and that a lot of commentary gets wrong: the AI Omnibus, Regulation (EU) 2026/1744, applies from 27 July 2026, and as its Recital 40 sets out, the high-risk obligations in Chapter III, Sections 1 to 3 (which include Article 12) apply from 2 December 2027 for Annex III systems and 2 August 2028 for Annex I systems. So Article 12 is best read today as regulatory intent rather than a live enforcement hook.
+
+None of this means the frameworks are broken. They test existence, they assess design, they sample operation, and they are genuinely valuable for all three. They were simply not built for a failure mode that produces no error and no output.
+
+## The objection I would raise if I were reading this
+
+Continuous controls monitoring already covers this. Mature programmes do not wait for the annual audit; they monitor between test dates.
+
+It is a fair challenge and it is where I would push back hardest. CCM detects errors and configuration deviations. Disabled logging, expired certificates, drifted permissions, undocumented exceptions. All real, all worth catching.
+
+My capture path produced none of those. Its configuration was correct. Its permissions were fine. It ran every time it was called and completed without an error. What it did not do was produce anything. CCM closes the technical drift gap. This is a semantic silence gap, and they are not the same shape.
+
+## It happened again, and the canary missed it
+
+After the capture-path fix, I built a canary: per-stage memory telemetry plus a daily read-back check that counts successes for each memory layer. It [shipped on 2026-08-15](https://github.com/andy-herman/neural-bridge/commit/be85898).
+
+The same day, a [refactor](https://github.com/andy-herman/neural-bridge/commit/506cf6b) merged four copies of the agent-turn code into one shared runtime. It moved a variable that the Discord handler still referenced. From then on, every Discord mention silently skipped its write to Honcho, the memory store behind the capture path I had fixed in early August. The resulting `NameError` was swallowed by a bare `except: pass`. The Telegram bridges kept working.
+
+That last detail is why the canary stayed green. It counts successes per memory layer, and the Telegram path kept logging successes for the same layer. The layer was healthy. One path into it was dead.
+
+The [fix landed on 2026-09-22](https://github.com/andy-herman/neural-bridge/commit/d44b67d), in a commit titled "restore Honcho capture on every mention". Besides restoring the write, it logs anything that reaches that `except`, and it adds a test that scans every daemon module for names a function uses but never binds.
+
+This one taught me two things. Assert on success per path, not per component. And a heartbeat check is itself a control, so it needs a check of its own.
+
+That same month, a watchdog that checks scheduled jobs' output files found five scheduled jobs on a second machine that had been reporting success while writing nothing. My deploy watcher had been failing the same way, which is the subject of the companion post, [Exit code 1, every two minutes, for four months](/posts/exit-code-1-every-two-minutes).
+
+## The fix is unglamorous
+
+Assert on expected positive output. Log successes, not only failures, because a component with zero events recorded is indistinguishable from a healthy quiet one. Then have something check, on a schedule, that the successes are still arriving on every path, and make their absence loud.
+
+For my system that was a small piece of work, and it started surfacing things I had not known were degraded almost immediately. On its first day, the new telemetry showed the weekly-digest layer returning something for one agent out of three, and that something was the file with the blocked-write message. I retired the layer the next day, 2026-08-16.
+
+There is a version of AI governance that consists of writing down that a control exists. There is another version that asks the control to prove, continuously, that it is still doing its job. The gap between those two is where my system lived for ten weeks, reporting green the entire time.
+
+If you own AI controls, the question I would take away is not whether they are documented. It is: if this control silently stopped working tomorrow, what would tell me, and how long would it take?
+
+For me the honest answer was nothing, and ten weeks.
