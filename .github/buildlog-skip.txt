@@ -1,0 +1,8 @@
+# Merged PRs the build log never shows, one URL per line.
+# Public on GitHub, but not site material. The sync treats a URL listed here
+# as already represented (.github/scripts/sync-buildlog.mjs).
+https://github.com/andy-herman/neural-bridge/pull/174
+# PRs that queue a post for a future Monday: the post announces itself when
+# it publishes, and the queueing is publishing machinery, not build news.
+https://github.com/andy-herman/neural-bridge-blog/pull/58
+https://github.com/andy-herman/neural-bridge-blog/pull/59

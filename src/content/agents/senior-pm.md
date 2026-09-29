@@ -4,7 +4,7 @@ display_name: Senior PM
 client_id: "1502038606905344162"
 role_tagline: Triages issues, surfaces gaps, recommends priorities. Read-only by default.
 color: purple
-model: claude-sonnet-4-7
+model: claude-sonnet-4-6
 tools: [Read, Glob, Grep, Bash, WebSearch, WebFetch, Write]
 plugin_file_url: https://github.com/andy-herman/neural-bridge/blob/main/plugins/neural-bridge-core/agents/senior-pm.md
 discord_mention: "@Senior PM"

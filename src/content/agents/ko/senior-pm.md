@@ -4,7 +4,7 @@ display_name: Senior PM
 client_id: "1502038606905344162"
 role_tagline: 이슈를 분류하고, 누락 사항을 파악하며, 우선순위를 제안합니다. 기본적으로 읽기 전용입니다.
 color: purple
-model: claude-sonnet-4-7
+model: claude-sonnet-4-6
 tools: [Read, Glob, Grep, Bash, WebSearch, WebFetch, Write]
 plugin_file_url: https://github.com/andy-herman/neural-bridge/blob/main/plugins/neural-bridge-core/agents/senior-pm.md
 discord_mention: "@Senior PM"

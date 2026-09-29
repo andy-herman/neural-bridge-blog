@@ -1,5 +1,5 @@
 ---
-title: "Correct what ran on the device in the Gemma GRC paper [skip-tweet]"
+title: "Correct what ran on the device in the Gemma GRC paper"
 date: 2026-09-26
 kind: note
 project: neural-bridge-blog

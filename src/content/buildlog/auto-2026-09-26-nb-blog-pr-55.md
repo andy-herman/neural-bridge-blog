@@ -1,5 +1,5 @@
 ---
-title: "Projects dropdown with Gemma GRC, Bellwether and a 1920s café in Seoul [skip-tweet]"
+title: "Projects dropdown with Gemma GRC, Bellwether and a 1920s café in Seoul"
 date: 2026-09-26
 kind: note
 project: neural-bridge-blog
