@@ -26,7 +26,7 @@ and off, and the room watches what the model does with each one.
 
 ## How it works
 
-- **Everything stays on the laptop.** Husky serves only `127.0.0.1`, because
+- **The app and demos stay on the laptop.** Husky serves only `127.0.0.1`, because
   what it hosts is deliberately vulnerable. The demos run `qwen2.5:3b` in
   Ollama on the same machine, with no API keys and no calls out.
 - **One source, two decks.** The lectures live in Python files that a script
@@ -70,10 +70,12 @@ and off, and the room watches what the model does with each one.
 
 Class records stay on the laptop. Each session writes a plain log of who
 joined, each poll answer, and each question and vote. When students join from
-phones, the relay carries their answers and questions during class, and the
-cloud copy is deleted when the class ends. If a class is never ended, the
-relay stops taking writes 12 hours after it started, and Firestore deletes
-what is left within about a day. Grades and coursework stay in Canvas.
+phones, the relay carries their names, NetIDs, answers, and questions during
+class, and the cloud copy is deleted when the class ends. A class that is
+never ended stays in the cloud until the next class starts and sweeps it. A
+relay update that is not deployed yet also stops writes 12 hours after a
+class starts and has Firestore delete what is left within about a day.
+Assignments and final grades stay in Canvas.
 
 ## What it is built from
 
