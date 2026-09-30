@@ -62,9 +62,14 @@ not presented as runtime screenshots.
 
 ## Current access
 
-The application runs privately and locally. Its source repository is private
-while the build develops. There is no public operational demo or shared
-terminal endpoint linked from this page.
+**[Open private Moonbase](https://moonbase.neural-bridge.dev)** (sign-in required).
+
+[Manage Moonbase settings](https://moonbase.neural-bridge.dev/admin) (sign-in required).
+
+Moonbase has a public address, but the workspace remains private. Cloudflare
+Access and an application sign-in are required. There is no public operational
+demo. The application runs locally, and its source repository remains private
+while the build develops.
 
 The first real registry check discovered fourteen plugin roles and thirteen
 Discord registrations, with zero runtime writers and every role honestly
@@ -76,8 +81,8 @@ The opt-in is now stored in private local configuration and has been verified
 after the existing services restarted without the temporary login-session
 setting. Their normal login startup reads that configuration; an actual machine
 reboot was not part of the release checks. A fresh clone needs its own private
-setting. The application itself remains a local workspace, not a publicly
-hosted service.
+setting. The application itself remains a local workspace with authenticated
+remote access.
 
 ## Prior art
 
