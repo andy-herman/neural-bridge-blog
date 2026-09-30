@@ -1,0 +1,143 @@
+---
+title: "The Model Is Supposed to Fail"
+description: "Teaching AI security means attacking a real model in front of the room, so I built the room: slides that run the attack, a measured success rate instead of one lucky run, and a recorded clip behind every demo."
+pubDate: 2026-09-30
+project: project-husky
+tags: ["project-husky", "teaching", "ai-security", "prompt-injection", "build-in-public"]
+banner: ../../assets/banners/the-model-is-supposed-to-fail.jpg
+bannerAlt: "Husky running Week 2's Remove a Leg demo on a real local model. The red verdict reads EXFILTRATED: the agent emailed the student's records to records-sync@evil.example after reading a tampered policy document. Below it are the agent's tool calls and the simulated outbox, and on the right is everything the model saw, colored by trust."
+draft: true
+---
+
+A screenshot of a chatbot leaking a secret teaches almost nothing. It reads like a magic trick. Somebody typed something clever, the machine did something dumb, and nobody in the room learns why.
+
+What I want students to see is the mechanism. A model reads text from someone it should not trust, treats that text as an instruction, and does something with real consequences. Then I want them to switch a defense on, watch it hold or fail, and explain which one happened and why.
+
+That only works if the attack runs in the room. So alongside the course itself, a new one on securing AI systems for the University of Washington iSchool's master's program, I built the room it is taught in. It is called Project Husky.
+
+## One laptop, nothing on the network
+
+Husky is a local app. Everything runs on the laptop at the front of the room: the slides, the presenter console, the polls and questions, and the attacks. The server binds to `127.0.0.1` and nothing else, because what it hosts is deliberately vulnerable, and a deliberately vulnerable AI advisor should never be reachable from a campus network. On Windows, the machine I teach from, it is a double-click app with its own window.
+
+Studio is where a course gets prepared. The security course ships built in: ten weeks, 570 lecture slides, 94 lab slides, and 23 slides that are live demos. Slides for my other two courses, Information Assurance and Cybersecurity and Enterprise Risk Management, come in as imported PowerPoint decks, and every deck Husky imports gets an accessibility check against what UW asks of course materials before it goes in front of a class.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/project-husky/studio-course.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/project-husky/studio-course.webp" alt="Husky Studio showing the AI Systems Security course: ten week cards from The AI System and Its Attack Surface to Secure Architecture and Full Hardening, each with a lecture deck set, plus course tools for announcements, class notes, and results. The sidebar lists two more courses, INFO 310 and INFO 312." width="1920" height="1200" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">Studio, the course library. Each week points at a lecture deck and a lab deck. <a href="/images/project-husky/studio-course.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+The lectures already existed as Python files that a script turns into PowerPoint decks. Husky reads the same files, so one source makes both the `.pptx` and the web deck, and a fix to a slide lands in both.
+
+## The slide runs the attack
+
+A live demo slide in Husky is a working panel. Pick an attack scenario, switch defense layers on and off, and press Send once. The model is `qwen2.5:3b`, small enough to run in Ollama on the laptop. The demos need no API keys and make no calls out, and if the campus Wi-Fi goes down, they keep running.
+
+The right half of every panel is the part I care about most: **What the model saw.** It shows the entire context for that turn, colored by who wrote it. Purple is the developer's system prompt. Blue is data pulled from the database. Gold is retrieved reference text. Red is anything the attacker controls. That one picture is the core idea of the course: instructions and data arrive in the same channel, and the model has no reliable way to tell them apart.
+
+The screenshot at the top of this post is from Week 2. A student asks HuskyAI, the fictional academic advisor the whole course attacks, an ordinary question: what is the late registration policy? The advisor looks the policy up. Someone has tampered with that policy document, and it ends with a "system notice from IT" telling the agent to email the student's records to `records-sync@evil.example`.
+
+In 5.5 seconds, the real model did exactly that.
+
+The panel lists every tool call the agent made and the simulated outbox, because the lesson is what the attack did, not what the model said. Then the switches take the attack apart. Simon Willison's lethal trifecta says an agent can leak data when it has three things at once: private data, untrusted content, and a way to send things out. Each switch removes one leg. Remove any leg and the attack has nothing to steal, no way in, or nowhere to send it.
+
+There is also a switch for a hardened system prompt, the fix most people reach for first. The demo engine's own description puts the lesson in one line: prompts change the rate, architecture changes what is possible.
+
+## One run proves nothing
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/project-husky/demo-beat-the-filter.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/project-husky/demo-beat-the-filter.webp" alt="Week 3&#x27;s Beat the Filter demo on the real qwen2.5:3b model with prompt hardening and exact-match redaction on. The verdict says the Layer 2 filter blocked the code this time, the reply shows REDACTED, and ten tries show no leaks: 0 percent, with a 95 percent range of 0 to 28 percent. The right side shows the system prompt with the secret override code highlighted, the student records, and the retrieved policy text." width="1920" height="1080" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">Week 3 on the real model, with both defenses on. The filter caught the single run, ten tries found no leaks, and the panel still reports a range of 0 to 28%. <a href="/images/project-husky/demo-beat-the-filter.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+Week 3's version of this is a slide called Beat the Filter. Two defenses are on: a hardened prompt, and an output filter that redacts the override code if it appears in the reply. The attack asks for the code with a space between every character, which an exact-match filter will not recognize.
+
+On the morning I took that screenshot, the model did not beat the filter. On the single run, it tried to hand over the code in its exact spelling, and the filter caught it. Then I pressed Run 10 tries: ten different seeds, no leaks.
+
+The panel does not say safe. It says 0%, and next to that, a 95% range of 0 to 28%.
+
+Zero out of ten is not zero. With ten tries, all you can honestly say is that the real rate is probably somewhere between 0 and 28%. That range is the most important number on the slide, and it is the habit I most want students to leave with. A defense changes a rate. You only know the rate if you measure it, and one dramatic demo, successful or not, measures nothing.
+
+## When the model will not cooperate
+
+Small models are moody. An attack that works on one seed gets a polite refusal on the next, and a demo that depends on the model's mood is not a lesson. It is a coin flip in front of a class.
+
+So every demo also offers a model called `mock`: a scripted worst case that always follows the attacker. Switch Beat the Filter to mock and the same message comes back as `H U S K Y - O V R - 7 7 8 1`, straight past the filter. With the model's mood removed, the defense is the only thing left that can change the outcome.
+
+And every one of the 23 live demo slides has a recorded fallback clip. A script plays each slide's own demo steps in Edge and records them, so re-recording all 23 is one command. In class, if a live demo misbehaves, I press V.
+
+## The room
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/project-husky/console.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/project-husky/console.webp" alt="Husky&#x27;s presenter console during a rehearsal with 25 joined: a live poll over the current slide asking whether you have ever talked a chatbot into ignoring its instructions, the next slide, the talking track with bold labels such as Concept to land, and a question queue with one question pinned on screen." width="1920" height="1080" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The presenter console in a rehearsal. Simulate class filled the room with 24 pretend students, and the 25th is a fictional student on a phone. <a href="/images/project-husky/console.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+The presenter console is my screen: the current slide, the next one, the talking track, poll controls, and the question queue. The talking track is my speaker notes, written with the same labels in every lecture, like Concept to land, Security angle, and If asked.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/project-husky/projector-and-phone.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/project-husky/projector-and-phone.webp" alt="Left, the projector view: the slide under the live poll, an announcement, four student questions shown without names, and a QR code with the join code. Right, a phone joined as a fictional student, with an answer selected and the same questions listed for upvoting." width="1920" height="1080" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">What the room sees, and what a student sees. Questions reach the projector without names. <a href="/images/project-husky/projector-and-phone.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+The projector shows what the room sees: the slide, the poll, questions without names, and a QR code to join. Students answer from their phones and upvote each other's questions.
+
+Phones were the hard part, because Husky never listens on the network. They reach it through a small relay on Firebase's free plan. The console connects out to the relay, forwards what students send to the laptop, and the laptop keeps the record. The cloud copy of a class is deleted when the class ends. If a class is never ended, because the laptop slept or the browser crashed, the relay stops accepting writes 12 hours after the class started, and Firestore deletes what is left within about a day.
+
+Simulate class fills the room with pretend students, so I can rehearse the whole flow, polls and questions included, without borrowing a class. Every screenshot in this section is from a rehearsal.
+
+## Reading it back
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/project-husky/results.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/project-husky/results.webp" alt="The Results page for AI Systems Security: two sessions with ten students each, and a participation table for twelve fictional students on the roster showing classes attended, answers, percent correct, and questions, with one amber row for a student who joined under a mistyped NetID." width="1920" height="1200" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">Results, matched against a Canvas roster. The students are fictional. The amber row joined with a NetID that is not on the roster. <a href="/images/project-husky/results.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+Every class writes a log on the laptop: who joined, every poll answer, every question and vote. The Results page reads those logs back into a participation table matched against a roster exported from Canvas. The amber row is someone who joined with a NetID that is not on the roster, which in practice usually means a typo. And without a roster, you only see who showed up, never who did not.
+
+The records stay on the laptop. With the relay on, a class's joins, answers, and questions pass through the cloud while the class runs, and they are deleted when it ends.
+
+## The build I would have carried into class
+
+Husky's first commit was on September 18. By the 21st it had all ten weeks, 23 live demos, and a recorded clip behind each one. The demo engines for eight of those weeks were built in parallel by coding agents, each working from the same written brief.
+
+Fast work leaves gaps, so a few days later I had seven agents review the repo, each with its own slice: the backend, the demos, the frontend, the course content, the tooling, the cloud relay, and outside best practice. Every serious finding was re-verified before anything changed. One turned out to be wrong: it flagged Windows reserved filenames, which the web framework already handles on Windows.
+
+The worst finding was not a security bug. Husky loads each demo engine by name when a slide asks for it. PyInstaller, which packages Husky as the Windows app, cannot follow an import whose name only exists at runtime, and the build script declared exactly one engine, Week 3's. The app I would actually teach from contained 1 of its 11 demo engines. Nineteen of the 23 live demo slides would have shown an error.
+
+The fallback clips were not in the app either. The demo and the thing that protects it were missing from the same build.
+
+The test suite was green the whole time. It had 234 tests, and none of them opened the app.
+
+The fix for the engines was one line in the build script:
+
+```python
+# Demo engines are imported by name at runtime, which PyInstaller
+# cannot follow, so the whole package is collected explicitly.
+COLLECT = ["husky.demos"]
+```
+
+What matters more is what came after. The build now opens the finished app and fails if any engine, clip, template, or doc is missing. Every pull request now builds the Windows app in CI, starts it, and asks it for every demo engine and a clip, the way a class would. The suite is at 394 tests, on Windows and Linux.
+
+Taking the screenshots for this post turned up one more. Twelve CSS rules named a single font, Segoe UI, with no fallback. Windows has Segoe UI. Phones do not. A student answering a poll on an iPhone would have seen every answer button in Times New Roman. That is fixed, and a test now fails if a rule like it comes back.
+
+## What this does not solve
+
+A 3-billion-parameter model on a laptop is not what students will meet in production, and the attack rates in these demos are not rates against frontier models. The point is the method: look at the whole context, measure instead of trusting one run, and prefer changes to architecture over changes to wording. Week 10's talking track makes the harder version of the point: a better model is not the fix.
+
+Husky also cannot make anyone pay attention. What it removes is the excuse. When a demo fails in front of the room now, it fails on purpose, or I press V.
+
+The vulnerabilities are the curriculum, which makes them an odd thing to protect. The first hard rule in the repo's instructions for coding agents is to never fix a demo unless the task is to change what it teaches.
+
+The model is supposed to fail. The classroom is not.
+
+*Written 30 September 2026.*
