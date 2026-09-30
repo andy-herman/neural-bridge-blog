@@ -47,7 +47,8 @@ function parseFrontmatter(raw) {
   const fmLines = lines.slice(1, endIdx);
   const data = {};
   for (const line of fmLines) {
-    if (!line.trim() || line.startsWith('#')) continue;
+    // Nested jobs have their own IDs; only top-level metadata identifies the agent.
+    if (!line.trim() || /^\s/.test(line) || line.startsWith('#')) continue;
     const colonIdx = line.indexOf(':');
     if (colonIdx === -1) continue;
     const key = line.slice(0, colonIdx).trim();
@@ -144,19 +145,29 @@ async function main() {
 
   const files = await fs.readdir(AGENTS_DIR);
   const agents = [];
+  let selectedProfiles = 0;
   for (const f of files) {
     if (!f.endsWith('.md')) continue;
     const raw = await fs.readFile(path.join(AGENTS_DIR, f), 'utf-8');
     const fm = parseFrontmatter(raw);
-    if (!fm.id || !fm.client_id) {
-      console.warn(`Skipping ${f}: missing id or client_id`);
+    if (!fm.id) {
+      console.warn(`Skipping ${f}: missing id`);
       continue;
     }
     if (onlyIds && !onlyIds.has(fm.id)) continue;
+    selectedProfiles += 1;
+    if (!fm.client_id) {
+      console.error(`  - ${fm.id}: no Discord account metadata; leaving its portrait unchanged`);
+      continue;
+    }
     agents.push({ id: fm.id, client_id: fm.client_id, display_name: fm.display_name });
   }
 
   if (agents.length === 0) {
+    if (selectedProfiles > 0) {
+      console.error('No Discord-backed profiles to refresh. Existing portraits are unchanged.');
+      return;
+    }
     console.error('No agents to fetch.');
     process.exit(1);
   }
