@@ -63,8 +63,9 @@ and off, and the room watches what the model does with each one.
   queue, plus Simulate class for rehearsing with pretend students.
 - A Results page that matches participation against the class roster from
   Canvas.
-- A double-click Windows app. Every pull request runs 394 tests on Windows
-  and Linux, and builds the app, starts it, and asks it for every demo engine.
+- A double-click Windows app. Every pull request runs the full test suite on
+  Windows and Linux, then builds the app, starts it, and asks it for every
+  demo engine.
 
 ## Student data
 

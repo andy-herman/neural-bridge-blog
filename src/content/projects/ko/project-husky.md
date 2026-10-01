@@ -40,7 +40,7 @@ Project Husky는 제가 워싱턴대학교(University of Washington) iSchool에�
 - 가져온 PowerPoint 덱으로 구성한 정보 보증 및 사이버보안(INFO 310)과 전사적 위험 관리(INFO 312). 가져오는 덱은 모두 UW가 강의 자료에 요구하는 기준에 따라 접근성 검사를 받습니다.
 - 발표 대본, 투표, 검토를 거치는 질문 대기열을 갖춘 발표자 콘솔. 가상 학생으로 수업을 리허설하는 Simulate class 기능도 있습니다.
 - Canvas의 수강생 명단과 참여 기록을 대조하는 Results 페이지.
-- 더블클릭으로 실행하는 Windows 앱. PR마다 Windows와 Linux에서 테스트 394개를 돌리고, 앱을 빌드해 실행한 뒤 모든 데모 엔진을 호출해 봅니다.
+- 더블클릭으로 실행하는 Windows 앱. PR마다 Windows와 Linux에서 전체 테스트를 돌리고, 앱을 빌드해 실행한 뒤 모든 데모 엔진을 호출해 봅니다.
 
 ## 학생 데이터
 
