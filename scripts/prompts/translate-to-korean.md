@@ -180,6 +180,7 @@ Korean blogs vary sentence length deliberately. Aim for this distribution per pa
 ### 7. Frontmatter handling
 
 - Translate these fields: `title`, `description`, `abstract`, `role_tagline` (if present), `does_not_own` (if present), and any string inside `operating_principles[]`.
+- For agent `jobs[]`, translate `title`, `summary`, and both `label` and `text` inside `trigger`, `deliverable`, `scope`, `approval_boundary`, and `example_request`. Keep each job's `id`, array order, and field names exactly. Do not add jobs or infer runtime capabilities.
 - Keep these fields exactly: `pubDate`, `updatedDate`, `topic`, `tags`, `status`, `version`, `draft`, `linkedinUrl`, `pr_url`, `kind`, `project`, `color`, `model`, `tools`, `client_id`, `plugin_file_url`, `discord_mention`, `is_orchestrator`, `id`, `display_name`, `date`.
 - For `links[]` entries: translate the `label` field, keep the `url` exactly.
 - YAML format must remain valid. **Quote any value that starts with a reserved YAML character** (`@`, `&`, `*`, `!`, `|`, `>`, `%`, `#`, `,`, `?`, `:`, `-`, `[`, `]`, `{`, `}`). Korean Discord-handle translations like `role_tagline: @Neural_Bridge_ ...` MUST be wrapped in quotes: `role_tagline: "@Neural_Bridge_ ..."`. Same for any field whose Korean value contains a colon followed by space.

@@ -1,0 +1,26 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  jobs: CollectionEntry<'agents'>['data']['jobs'];
+  locale: 'en' | 'ko';
+}
+
+const { jobs, locale } = Astro.props;
+---
+{jobs.map(job => (
+  <section class="mb-8 border-t border-cream-200 dark:border-cream-900 pt-5" aria-labelledby={`job-${locale}-${job.id}`}>
+    <h2 id={`job-${locale}-${job.id}`} class="font-serif text-xl font-semibold tracking-tight mb-2">
+      {job.title}
+    </h2>
+    <p class="text-sm text-cream-800 dark:text-cream-100 leading-relaxed mb-4">{job.summary}</p>
+    <dl class="space-y-3">
+      {[job.trigger, job.deliverable, job.scope, job.approval_boundary, job.example_request].map(detail => (
+        <div>
+          <dt class="font-mono text-[11px] uppercase tracking-wider text-rust-500 mb-1">{detail.label}</dt>
+          <dd class="text-sm text-cream-800 dark:text-cream-100 leading-relaxed whitespace-pre-line">{detail.text}</dd>
+        </div>
+      ))}
+    </dl>
+  </section>
+))}
