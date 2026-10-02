@@ -17,7 +17,7 @@ That only works if the attack runs in the room. So alongside the course itself, 
 
 ## One laptop, nothing on the network
 
-Husky is a local app. Everything runs on the laptop at the front of the room: the slides, the presenter console, the polls and questions, and the attacks. The server binds to `127.0.0.1` and nothing else, because what it hosts is deliberately vulnerable, and a deliberately vulnerable AI advisor should never be reachable from a campus network. On Windows, the machine I teach from, it is a double-click app with its own window.
+Husky is a local app. Everything runs on the laptop at the front of the room: the slides, the presenter console, the polls and questions, and the attacks. The one exception is a small relay that lets students join from their phones. The server binds to `127.0.0.1` and nothing else, because what it hosts is deliberately vulnerable, and a deliberately vulnerable AI advisor should never be reachable from a campus network. On Windows, the machine I teach from, it is a double-click app with its own window.
 
 Studio is where a course gets prepared. The security course ships built in: ten weeks, 570 lecture slides, 94 lab slides, and 23 slides that are live demos. Slides for my other two courses, Information Assurance and Cybersecurity and Enterprise Risk Management, come in as imported PowerPoint decks, and every deck Husky imports gets an accessibility check against what UW asks of course materials before it goes in front of a class.
 
@@ -89,7 +89,7 @@ The presenter console is my screen: the current slide, the next one, the talking
 
 The projector shows what the room sees: the slide, the poll, questions without names, and a QR code to join. Students answer from their phones and upvote each other's questions.
 
-Phones were the hard part, because Husky never listens on the network. They reach it through a small relay on Firebase's free plan. The console connects out to the relay, forwards what students send to the laptop, and the laptop keeps the record. The cloud copy of a class is deleted when the class ends. If a class is never ended, because the laptop slept or the browser crashed, the relay stops accepting writes 12 hours after the class started, and Firestore deletes what is left within about a day.
+Phones were the hard part, because Husky never listens on the network. They reach it through a small relay on Firebase's free plan, which carries each student's name and NetID along with their answers and questions. The console connects out to the relay, forwards what students send to the laptop, and the laptop keeps the record. The cloud copy of a class is deleted when the class ends. If a class is never ended, because the laptop slept or the browser crashed, that copy stays in the cloud until the next class starts and sweeps it. A relay update that is not deployed yet closes the gap: it stops accepting writes 12 hours after a class starts, and Firestore deletes what is left within about a day.
 
 Simulate class fills the room with pretend students, so I can rehearse the whole flow, polls and questions included, without borrowing a class. Every screenshot in this section is from a rehearsal.
 
@@ -104,7 +104,7 @@ Simulate class fills the room with pretend students, so I can rehearse the whole
 
 Every class writes a log on the laptop: who joined, every poll answer, every question and vote. The Results page reads those logs back into a participation table matched against a roster exported from Canvas. The amber row is someone who joined with a NetID that is not on the roster, which in practice usually means a typo. And without a roster, you only see who showed up, never who did not.
 
-The records stay on the laptop. With the relay on, a class's joins, answers, and questions pass through the cloud while the class runs, and they are deleted when it ends.
+The records stay on the laptop. With the relay on, each student's name, NetID, answers, and questions pass through the cloud while the class runs, and the cloud copy is deleted when the class ends.
 
 ## The build I would have carried into class
 
