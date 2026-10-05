@@ -7,7 +7,7 @@ flowchart TB
   end
   subgraph SCORE["SCORE · every answer, on the Mac"]
     direction LR
-    ANS["Answer split<br/>into claims"] --> T0["Tier 0 rules<br/>citations valid; dates,<br/>numbers, references found"]
+    ANS["Answer split into<br/>claims; openers and<br/>headings dropped"] --> T0["Tier 0 rules<br/>citations valid; dates,<br/>numbers, references found"]
     T0 --> FC["FactCG per claim<br/>cited passages first,<br/>then every shown one,<br/>then the gold ones"]
     FC --> MET["Correct, grounded,<br/>citation precision,<br/>fabrication"]
   end
