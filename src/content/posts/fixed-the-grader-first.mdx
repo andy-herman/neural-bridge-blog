@@ -1,0 +1,109 @@
+---
+title: "Before I Fixed the Model, I Had to Fix the Grader"
+description: "The first end-to-end baseline of my compliance assistant: what a library of primary texts is worth against the model's memory, how my grader overstated failure until I read the answers, and why a prompt change died in 22 minutes."
+pubDate: 2026-10-08
+project: gemma-grc
+tags: ["gemma-grc", "evaluation", "llm-as-judge", "rag", "prompt-engineering", "grc", "compliance", "build-in-public"]
+draft: false
+---
+
+The first full scoring of my compliance assistant said that 36% of its answers contained a fabricated claim.
+
+That number would have been easy to believe. Small models make things up; I wrote [a whole post about it](/posts/it-learned-how-i-sound). It was also wrong, and I only found out because I stopped reading the averages and read the answers.
+
+Many of the answers began the same way: "Here's the answer to your question, based solely on the provided context:". My grader splits each answer into sentences and checks every sentence against the passages the model was given. That opening line is not in any passage, so the grader marked it unsupported, and an answer with one unsupported sentence counts as fabricated. Answers that opened with that line were marked fabricated 63% of the time. Answers without it, 17%.
+
+Most of that gap was the grader reading a greeting as a claim.
+
+## The baseline
+
+Gemma GRC is the assistant I run on a Mac Mini for regulatory work. A small open model, Gemma 3 4B, answers only from a library of about six thousand passages of primary regulatory text plus my own notes, and cites the passage behind each claim. In [my last post](/posts/the-law-moved-in-july) I built the test set it gets measured against: 564 questions, several right passages per question, and eight canaries for facts that changed in 2026.
+
+Run 011 was the first measurement of the system as it actually ships: 442 test questions plus the eight canaries, three answers per question, in three arms.
+
+- **The shipping configuration.**
+- **The same, with the date router switched off.** The router is what I added after the Article 113 miss.
+- **The same model with no library at all,** just the bare question.
+
+Here is what the library is worth, once the grader was fixed:
+
+| | With the library | From memory |
+|---|---|---|
+| Claims supported by a right passage | 82% | 23% |
+| Answers with an unsupported claim | 25% | 98% |
+| Declines when the library has no answer | 56% | 2.5% |
+| Canaries passed | 83% | 0% |
+
+Paired question by question, the library adds 59 points to the share of supported claims (95% interval 56 to 62). From memory, the model almost never says it doesn't know. With the library, it says so about half the time it should.
+
+The router earned its place without costing anything. It lifted the canaries by 21 points (interval 4 to 46), all of it on the date questions, and moved every other measure by less than half a point.
+
+## Measuring the measurement
+
+The greeting was one of three faults in the grader. The other two:
+
+- **The canary checks were literal.** The UK canary expects the four designated firms and the date they were designated. The model answered "July 13, 2026", the check wanted "13 July 2026", and a correct answer failed. Italics around a "not" broke the phrase match on another correct answer. And an answer that opened "Yes, the guidance applies to generative AI", which is the stale, wrong answer, passed because a later sentence quoted the right phrase.
+- **The refusal detector was narrow.** It caught "the context does not contain", but missed "the context does not provide" and, from the no-library arm, every "I don't have information about".
+
+I fixed all three, gave the grader a version number, and scored every answer again. No answer was regenerated, and the old scores are archived beside the new ones, not overwritten.
+
+| | First scoring | Rescored |
+|---|---|---|
+| Answers with an unsupported claim | 36% | 25% |
+| Canaries passed | 71% | 83% |
+| Declines when the library has no answer | 44% | 56% |
+
+Even the corrected 25% overstates the problem. In 212 of the 276 flagged answers, exactly one sentence failed, usually commentary or an inference the passages don't state outright. Invented dates, numbers or article references turned up in 7 claims out of 1,086 answers.
+
+None of these faults were exotic, and each one would have moved a decision. A 36% fabrication rate says swap the model. A 25% rate that is mostly one sentence of commentary says something much smaller.
+
+## What actually needs fixing
+
+With an honest grader, the real weaknesses are clear.
+
+- **It answers questions the library can't.** 44% of the time, a question with no answer in the library still gets one, assembled from passages on a related subject. In one case it answered a question about US ransom-payment reporting penalties from AI Act text.
+- **Its citations are looser than its claims.** 90% of its claims are supported by some passage it was shown, but only 63% of cited claims are supported by the passage they cite.
+- **Two canaries still miss.** Two of three answers gave the wrong start date for the Commission's fines on general-purpose AI providers. Two of three said the new US model risk guidance covers generative AI, which it explicitly does not.
+
+One number I had read wrong myself. 8% of answers carry a bracketed number that isn't one of the passages shown, and I took that to mean citing passages it never saw. In fact 83 of those 90 are reference markers copied from the source documents, like a NIST paper's "[154]". To a reader they still look like citations, so it is still a problem, just a different one.
+
+## The run that died in 22 minutes
+
+Run 012 went after the first two weaknesses with a new version of the prompt. It added three rules:
+- check that the passages answer this exact question;
+- when they don't, open with "The context does not contain the answer.";
+- cite only a passage that states the claim.
+
+Before any long run, a quick pass on held-out questions now has to clear a gate: if more than 5% of answerable questions get refused, the run stops. This one stopped after 22 minutes. Wrong refusals: 96.8%.
+
+The model had not become cautious. It opened 92 of 95 answerable answers with "The context does not contain the answer." Then, in 90 of them, it answered the question anyway, with citations. A 4B model reads a quoted line as the way to start, whatever condition sits in front of it, so every answer contradicted itself in its first sentence. The citation rule made no measurable difference either.
+
+The gate saved about nine hours of generation and scoring. The lesson went into my lab notebook as one line: never hand a small model a sentence to open with.
+
+The bigger mistake was mine. I changed three rules at once, so when the run failed I couldn't tell which rule had caused it. Run 012b changes one: the scope check alone, with the original refusal wording and nothing quoted. It passed the gate this morning, with 1 wrong refusal in 95. On the no-answer questions in that quick pass it declined 10 of 19, not obviously better than before, but 19 questions can't tell. The full run, compared question by question against the baseline, is running as I write this.
+
+## Things that broke at night
+
+A tool that measures itself overnight needs to survive the night. This one didn't, more than once.
+
+- **Generation stopped at answer 1,057** with a Metal out-of-memory error.
+- **The grader's GPU cache grew to 27 GB** before the scoring had to be stopped.
+- **A date written in square brackets, "[2026-07-27]",** crashed the citation parser.
+
+Both memory caches are now capped and emptied as the run goes. Each step retries a few times and then stops cleanly, rather than scoring half a run. After the fixes, I regenerated two answers from the first pass to check that nothing had shifted. Both came back word for word.
+
+## What happens next
+
+The 100-pair audit of the answer key is still mine to do. Until it's done, every number here is provisional, although freezing the test set means scoring again, not generating again. Then come Run 012b's verdict and the citation rule tested on its own. Only after that does the newer Gemma get swapped in behind the same library.
+
+## Read twenty answers
+
+If you rely on an AI grader for anything, read twenty of the answers it graded before you trust its number. That goes for an eval, a vendor demo or a dashboard of model quality. Not the summary. The answers.
+
+Mine was counting "Here's the answer to your question" as a fabrication. It took one afternoon of reading to find that, and three runs to understand what the numbers were actually saying.
+
+---
+
+Gemma GRC has a [project page](/projects/gemma-grc) on this site. The first round of lab results is in the working paper [When the Instrument Is the Bottleneck](/research/when-the-instrument-is-the-bottleneck).
+
+#GRC #Compliance #AIEngineering #LLMEvaluation #RAG #BuildInPublic
