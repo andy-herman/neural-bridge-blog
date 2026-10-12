@@ -1,12 +1,12 @@
 ---
 title: "Gemma GRC: A Technical Specification"
 description: "How a small local model answers compliance questions from a governed library of primary regulatory texts: the data flows, the corpus rules, retrieval, generation, the evaluation and judging stack, what it is for, and what comes next."
-abstract: "Gemma GRC is a governance, risk and compliance assistant that runs on a Mac Mini with no network connection. A four-billion-parameter open model answers only from a governed library, 5,989 passages of primary regulatory text from 58 official sources plus my own notes, and cites the passage behind every claim. This specification describes the system as it stood on 2 October 2026: the build-time data flows that fetch, parse, gate and label the library; the query path, including hybrid retrieval and a router for questions about when rules apply; the boundary that lets my agents search the library without seeing restricted text; and the evaluation stack, a 564-question test set scored by judges that were tested before they were trusted. It reports the first end-to-end baseline, Run 011. Against the same model answering from memory, the library raises the share of claims supported by a right passage from 23% to 82%, and the share of answers with an unsupported claim falls from 98% to 25%. Its weakest behavior is answering questions the library cannot. It ends with what the system is for, where it fails, and the next pieces of work."
+abstract: "Gemma GRC is a governance, risk and compliance assistant that runs on a Mac Mini with no network connection. A four-billion-parameter open model answers only from a governed library, 5,989 passages of primary regulatory text from 58 official sources plus my own notes, and cites the passage behind every claim. This specification describes the system as it stood on 2 October 2026: the build-time data flows that fetch, parse, gate and label the library; the query path, including hybrid retrieval and a router for questions about when rules apply; the boundary that lets my agents search the library without seeing restricted text; and the evaluation stack, a 749-question test set scored by judges that were tested before they were trusted. It reports the first end-to-end baseline, Run 011. Against the same model answering from memory, the library raises the share of claims supported by a right passage from 23% to 82%, and the share of answers with an unsupported claim falls from 98% to 25%. Its weakest behavior is answering questions the library cannot, and two prompt changes, tested one rule at a time, did not fix it. It ends with what the system is for, where it fails, and the next pieces of work."
 pubDate: 2026-10-19
 topic: development-playbooks
 tags: ["gemma-grc", "rag", "local-ai", "evaluation", "llm-as-judge", "ai-governance", "grc", "build-in-public"]
 status: working-paper
-version: "v1.1"
+version: "v1.2"
 draft: true
 ---
 
@@ -22,9 +22,9 @@ This is the reference document for Gemma GRC: what each part does, how data move
 | Library | 5,989 chunks from 58 official public sources in six lanes, plus 315 chunks of my own writing and teaching |
 | Retrieval | BM25 and BGE-small embeddings fused by reciprocal rank, top eight, with a router for questions about when rules apply |
 | Agent access | One owner-only MCP tool that returns text for public and own passages and counts for everything else |
-| Evaluation | 564 questions: 457 answerable, 99 whose answer is not in the library, 8 canaries |
+| Evaluation | 749 questions: 457 answerable, 284 whose answer is not in the library, 8 canaries |
 | Judges | Rules, then FactCG claim by claim, both tested on 272 controls before use |
-| Baseline | 82% of claims supported by a right passage, against 23% from memory; 56% of questions the library cannot answer are refused (Run 011) |
+| Baseline | 82% of claims supported by a right passage, against 23% from memory; 57% of questions the library cannot answer are refused (Run 011) |
 | Status | Working system; Run 011 is provisional until the test set is frozen |
 
 ## Design principles
@@ -43,7 +43,7 @@ This is the reference document for Gemma GRC: what each part does, how data move
 <a href="/images/projects/gemma-grc-spec-architecture-light.svg" class="block" target="_blank" rel="noopener">
 <picture>
 <source srcset="/images/projects/gemma-grc-spec-architecture-dark.svg" media="(prefers-color-scheme: dark)" />
-<img src="/images/projects/gemma-grc-spec-architecture-light.svg" alt="Gemma GRC in three stages. Build, on the Mac with no model involved: the public lane of 58 official sources is parsed, chunked and labeled with version and status, while my notes and course material pass a fail-closed confidentiality gate and are chunked, redacted and stamped with provenance; both feed a fingerprinted BM25 and dense index. Serve, with no network: a question from me, or from my agents through an owner-only MCP boundary, goes to hybrid search with a temporal router, which passes the top eight passages to Gemma 3 4B with a grounding prompt; the answer cites a passage per claim or says what is missing. Measure, on the clean build only: eval v3 with 564 questions, runs that change one thing, control-tested judges, and scores with confidence intervals." width="1037" height="605" loading="lazy" decoding="async" class="w-full h-auto" />
+<img src="/images/projects/gemma-grc-spec-architecture-light.svg" alt="Gemma GRC in three stages. Build, on the Mac with no model involved: the public lane of 58 official sources is parsed, chunked and labeled with version and status, while my notes and course material pass a fail-closed confidentiality gate and are chunked, redacted and stamped with provenance; both feed a fingerprinted BM25 and dense index. Serve, with no network: a question from me, or from my agents through an owner-only MCP boundary, goes to hybrid search with a temporal router, which passes the top eight passages to Gemma 3 4B with a grounding prompt; the answer cites a passage per claim or says what is missing. Measure, on the clean build only: eval v3 with 749 questions, runs that change one thing, control-tested judges, and scores with confidence intervals." width="1037" height="605" loading="lazy" decoding="async" class="w-full h-auto" />
 </picture>
 </a>
 <figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Figure 1 · Build, serve, measure · <a href="/images/projects/gemma-grc-spec-architecture-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
@@ -62,7 +62,7 @@ The system has three stages. Build turns sources into a labeled, fingerprinted i
 | Index | `retrieval.py` | BM25 and BGE-small vectors, stamped with corpus and model fingerprints |
 | Question answering | `ask.py` | k = 8, 13,000-character context budget, temporal router, greedy decoding |
 | Agent tool | `mcp_server.py` | stdio, owner-only, text for public and own passages only |
-| Evaluation | `evalv3_build.py`, `run_eval_v3.py`, `score_eval_v3.py`, `compare_runs.py` | 564 questions, 95% bootstrap intervals, paired comparisons |
+| Evaluation | `evalv3_build.py`, `run_eval_v3.py`, `score_eval_v3.py`, `compare_runs.py` | 749 questions, 95% bootstrap intervals, paired comparisons |
 | Judges | `judges.py`, `judge_controls.py` | Tier 0 rules, FactCG, 272 controls |
 
 </div>
@@ -216,7 +216,7 @@ This is the one path where library text reaches a model off the machine. The age
 <a href="/images/projects/gemma-grc-spec-eval-light.svg" class="block" target="_blank" rel="noopener">
 <picture>
 <source srcset="/images/projects/gemma-grc-spec-eval-dark.svg" media="(prefers-color-scheme: dark)" />
-<img src="/images/projects/gemma-grc-spec-eval-light.svg" alt="How eval v3 was built. Write, with local models on the clean build: units from the clean build are split by unit into dev (20%) and test (80%), qwen2.5 14B writes questions, and a gate drops questions not anchored to their unit or trivial, leaving 457 answerable, 99 absent and 8 canaries. Grade, with several right passages per question: candidates are pooled from four retrievers to depth 6, two local judges grade relevance from 0 to 3, and a gate asks whether the pair is cleared to leave the Mac. If yes, Claude grades it for evaluation only; if no, a local dispute rule using qwen2.5 14B decides. Both paths feed my blind audit of 100 pairs, and the set is then frozen with a sha256." width="1206" height="426" loading="lazy" decoding="async" class="w-full h-auto" />
+<img src="/images/projects/gemma-grc-spec-eval-light.svg" alt="How eval v3 was built. Write, with local models on the clean build: units from the clean build are split by unit into dev (20%) and test (80%), qwen2.5 14B writes questions, and a gate drops questions not anchored to their unit or trivial, leaving 457 answerable, 284 absent and 8 canaries. Grade, with several right passages per question: candidates are pooled from four retrievers to depth 6, two local judges grade relevance from 0 to 3, and a gate asks whether the pair is cleared to leave the Mac. If yes, Claude grades it for evaluation only; if no, a local dispute rule using qwen2.5 14B decides. Both paths feed my blind audit of 100 pairs, and the set is then frozen with a sha256." width="1206" height="426" loading="lazy" decoding="async" class="w-full h-auto" />
 </picture>
 </a>
 <figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Figure 5 · Building the test set · <a href="/images/projects/gemma-grc-spec-eval-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
@@ -224,7 +224,7 @@ This is the one path where library text reaches a model off the machine. The age
 
 Eval v3 is the test set every change is measured against. It is built from the clean build only, so everything about it can be discussed in public.
 
-- **Questions.** qwen2.5 14B wrote questions from sampled units. A deterministic check dropped any question that did not name its instrument or authority, and any about URLs, contact details or page numbers. Of 599 drafted, 564 are usable: 457 answerable, 99 absent (the library does not hold the answer; 35 more were dropped because it did) and 8 canaries.
+- **Questions.** qwen2.5 14B wrote questions from sampled units. A deterministic check dropped any question that did not name its instrument or authority, and any about URLs, contact details or page numbers. Of 883 drafted, 749 are usable: 457 answerable, 284 absent (the library does not hold the answer; 134 more were dropped because it did) and 8 canaries. The absent set was tripled on 12 October, before the freeze, so that a 6-point change in refusals could be measured (see Runs 012 and 012b).
 - **Canaries.** Eight hand-written questions about facts that changed in 2026:
   - the AI Act's new application dates;
   - the new wording of the AI literacy duty in Article 4;
@@ -234,9 +234,9 @@ Eval v3 is the test set every change is measured against. It is built from the c
   - the Cyber Resilience Act reporting duty that went live on 11 September.
 
   A system answering from stale memory fails them, so every run includes them, whatever the split.
-- **Holdout.** Questions are split by source unit, not by question, so no unit feeds both dev and test. That gives 931 units, 115 dev questions and 449 test questions.
+- **Holdout.** Questions are split by source unit, not by question, so no unit feeds both dev and test. That gives 919 units, 153 dev questions and 596 test questions.
 - **Several right answers.** Each question gets a set of gold passages, not just one. Candidates are pooled from four retrievers (BM25, BGE, BGE-M3 and the hybrid) to depth 6, and two local judges grade each for relevance from 0 to 3.
-- **Grading the graders.** Claude also grades a pair when both the question and the passage are public: 1,389 pairs, for evaluation only, and never as training data. When the local judges disagreed, Claude sided with qwen2.5 14B 85% of the time, so qwen settles disagreements on the 396 pairs that never leave the Mac.
+- **Grading the graders.** Claude also grades a pair when both the question and the passage are public: 1,581 pairs, for evaluation only, and never as training data. When the local judges disagreed, Claude sided with qwen2.5 14B 85% of the time, so qwen settles disagreements on the pairs that never leave the Mac.
 - **My audit.** I grade a blind sample of 100 pairs, drawn from Claude's grades, the tie-breaks and the jury, with no other grade on screen. When the audit is done, the set is frozen and its sha256 recorded.
 
 ### Judges
@@ -313,23 +313,23 @@ Samples are averaged within a question first, then across questions, with 95% bo
 <a href="/images/projects/gemma-grc-spec-run011-light.svg" class="block" target="_blank" rel="noopener">
 <picture>
 <source srcset="/images/projects/gemma-grc-spec-run011-dark.svg" media="(prefers-color-scheme: dark)" />
-<img src="/images/projects/gemma-grc-spec-run011-light.svg" alt="Run 011. The eval v3 test split, 442 questions and 8 canaries, goes to three arms: router on with three samples each, router off where identical prompts reuse answers, and closed book with no library and one sample each. All three are scored with one scorer version, and two comparisons follow by paired bootstrap: router on against router off, and library against memory." width="729" height="260" loading="lazy" decoding="async" class="w-full h-auto" />
+<img src="/images/projects/gemma-grc-spec-run011-light.svg" alt="Run 011. The eval v3 test split, 589 questions and 8 canaries, goes to three arms: router on with three samples each, router off where identical prompts reuse answers, and closed book with no library and one sample each. All three are scored with one scorer version, and two comparisons follow by paired bootstrap: router on against router off, and library against memory." width="729" height="260" loading="lazy" decoding="async" class="w-full h-auto" />
 </picture>
 </a>
 <figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Figure 7 · Run 011 design · <a href="/images/projects/gemma-grc-spec-run011-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
 </figure>
 
-Run 011 is the first end-to-end baseline of the system as it ships. It runs on the eval v3 test split, 442 questions, plus all 8 canaries:
+Run 011 is the first end-to-end baseline of the system as it ships. It runs on the eval v3 test split, 589 questions after the 12 October extension, plus all 8 canaries:
 
 - **Router on:** the shipping configuration, three samples per question at temperature 0.7.
 - **Router off:** the same, with the temporal router disabled. Where the router does not change the passages, the prompt is identical, so the answer and its score are reused.
 - **Closed book:** the bare question with no library, one sample, as in the August baselines.
 
-It answers two questions: how much the library is worth compared with the model's memory, and whether the router helps or hurts outside date questions. The eval is a draft until my audit is done, so the results are provisional; freezing it means scoring again, not generating new answers. Router off reused 1,317 of its 1,350 answers; only the 33 answers to the 11 questions whose passages the router changed were generated again.
+It answers two questions: how much the library is worth compared with the model's memory, and whether the router helps or hurts outside date questions. The eval is a draft until my audit is done, so the results are provisional; freezing it means scoring again, not generating new answers. Router off reused 1,758 of its 1,791 answers; only the 33 answers to the 11 questions whose passages the router changed were generated again.
 
 ## Run 011 results
 
-Scored with scorer 2026-10-01.1, on the eval v3 test split.
+Scored with scorer 2026-10-01.1, on the eval v3 test split, which has 227 questions the library cannot answer since the 12 October extension.
 
 <div class="overflow-x-auto">
 
@@ -340,7 +340,7 @@ Scored with scorer 2026-10-01.1, on the eval v3 test split.
 | Answers with an unsupported claim | 25.4% | 25.2% | 98.1% |
 | Cited claims whose cited passage supports them | 63.2% | 63.5% | n/a |
 | Answers with a bracketed number that is not a shown passage | 8.3% | 8.4% | n/a |
-| Refuses when the library has no answer | 56.2% | 56.2% | 2.5% |
+| Refuses when the library has no answer | 57.1% | 57.1% | 3.5% |
 | Wrongly refuses an answerable question | 1.0% | 1.0% | 1.7% |
 | A gold passage among those shown | 98.1% | 98.1% | n/a |
 | Canaries passed | 83.3% | 62.5% | 0% |
@@ -353,7 +353,7 @@ Paired by question, with 95% intervals:
 |---|---|---|
 | Library against memory | Claims supported by a right passage | +58.9 points (55.8 to 62.0) |
 | Library against memory | Answers with an unsupported claim | -72.7 points (-76.5 to -68.5) |
-| Library against memory | Refuses when the library has no answer | +53.7 points (45.0 to 62.9) |
+| Library against memory | Refuses when the library has no answer | +53.6 points (48.6 to 59.2) |
 | Library against memory | Canaries passed | +83.3 points (66.7 to 100) |
 | Router on against off | Every answerable measure | Within 0.3 points; every interval includes zero |
 | Router on against off | Canaries passed | +20.8 points (4.2 to 45.8) |
@@ -364,7 +364,7 @@ Paired by question, with 95% intervals:
 
 **"Unsupported" is mostly one sentence.** 276 of 1,086 router-on answers have a claim the judge could not tie to a passage, and 212 of them have exactly one. That claim is usually commentary, an inference, or a sentence about the answer itself. Invented dates, numbers or references are rare: 7 claims in 1,086 answers.
 
-**Answering what the library cannot is the weakest behavior.** 44% of questions whose answer is not in the library still got an answer, assembled from nearby passages.
+**Answering what the library cannot is the weakest behavior.** 43% of questions whose answer is not in the library still got an answer, assembled from nearby passages.
 
 **Citations are looser than claims.** 63% of cited claims are supported by the passage they cite, though 90% of claims are supported by some passage the model was shown. Of the 90 answers with a bracketed number that is not a shown passage, 83 carry numbers above 8, which are reference markers copied from the source text, such as a NIST document's [154]; 7 point at a passage the context budget cut.
 
@@ -384,7 +384,7 @@ Scorer 2026-10-01.1 fixes all three, and every arm was scored again without gene
 |---|---|---|
 | Answers with an unsupported claim | 36.0% | 25.4% |
 | Canaries passed | 70.8% | 83.3% |
-| Refuses when the library has no answer | 44.2% | 56.2% |
+| Refuses when the library has no answer (the original 80 questions) | 44.2% | 56.2% |
 | Claims supported by a right passage | 79.2% | 81.6% |
 
 The rescored canary results match a line-by-line read of all 24 answers by Claude, the evaluation-only grader. The first scores are archived beside the new ones, never mixed with them.
@@ -397,6 +397,31 @@ Other faults surfaced while the run was live:
 
 All were fixed, and two answers generated again after the memory fixes matched the originals word for word.
 
+### Prompt experiments: Runs 012 and 012b
+
+Run 011 left two targets: questions the library cannot answer, and loose citations. Both were tried through the grounding prompt. v1 stays the shipping default, and each candidate sits behind a gate: a quick pass on the dev split stops the run if more than 5% of answerable questions are refused.
+
+- **Run 012, prompt v2.** It added three rules at once:
+  - a scope check;
+  - an opening line to use when the passages do not answer ("The context does not contain the answer.");
+  - a rule to cite only passages that state the claim.
+
+  The gate stopped it after 22 minutes, with 96.8% wrong refusals. The model opened 92 of 95 answerable answers with the quoted sentence, and 90 of those went on to answer anyway: a 4B model treats a quoted opening line as mandatory. The citation rule made no measurable difference.
+- **Run 012b, prompt v3.** v1 plus the scope check alone, with no quoted sentence. It passed the gate, and the full test run was compared with Run 011 question by question.
+
+| Run 012b against Run 011 (paired, 95% interval) | Difference |
+|---|---|
+| Refuses when the library has no answer (227 questions) | +3.5 points (-1.3 to +8.5) |
+| Wrongly refuses an answerable question | +1.3 points (+0.2 to +2.7) |
+| Claims supported by a right passage | +1.9 points (-0.4 to +4.3) |
+| Answers with an unsupported claim | -4.3 points (-8.0 to -0.6) |
+
+The decision rule, written before the run, adopts a change only if refusals rise with an interval above zero.
+- **On the first 80 no-answer questions** the gain was 6.3 points, with an interval from -1.2 to +14.2: too wide to call. Rather than loosen the rule, the no-answer questions were tripled through the same pipeline.
+- **On 227 questions** the gain is 3.5 points, still not distinguishable from zero.
+
+v3 is not adopted, and v1 keeps shipping. Its clearest effect, fewer unsupported answers, came with more wrong refusals and would need a run of its own.
+
 ## Findings so far
 
 | Finding | Evidence | Consequence |
@@ -404,12 +429,13 @@ All were fixed, and two answers generated again after the memory fixes matched t
 | Fine-tuning a small model on my notes taught it my style, not my facts | Fabricated details rose from 20% to 48% on a 1B model and from 26% to 36% on a 4B model | The generator ships without an adapter |
 | Retrieval is the largest gain | Plus 0.86 on a five-point scale against closed book (95% CI 0.48 to 1.24) | The library became the product |
 | Fine-tuning the search model paid off where fine-tuning the generator did not | The right passage in the top four rose from 71% to 79% after nine minutes of training | Tune the failing component, not the famous one |
-| The instruments failed before the model did | A judge that scored 4.99 of 5 on everything, a tokenizer call that hid a NaN, a missing query prefix, and a noise floor of about 0.3 points at 50 questions | Every instrument is control-tested, and the test set has 564 questions, not 50 |
+| The instruments failed before the model did | A judge that scored 4.99 of 5 on everything, a tokenizer call that hid a NaN, a missing query prefix, and a noise floor of about 0.3 points at 50 questions | Every instrument is control-tested, and the test set has 749 questions, not 50 |
 | Date questions failed on retrieval, not reading | Article 113 was not in the top 60 results for "when" questions | The temporal router took the canaries from 6 of 8 to 8 of 8 |
 | The generator misreads | It said the 2026 guidance "does cover generative AI" against a passage saying it does not, and FactCG scored the claim 0.20; in Run 011, two of three samples of the scope canary said the same | Claim-level judging decides any generator swap |
 | The library carries the facts | Run 011: claims supported by a right passage, 82% against 23% from memory (+58.9 points, 95% CI 55.8 to 62.0) | Every later change is measured against this baseline |
 | The router helps date questions and nothing else | Canaries +20.8 points (4.2 to 45.8); every answerable measure within 0.3 points | It stays on |
-| Answering what the library cannot is the weakest behavior | 44% of questions with no answer in the library got one anyway | Run 012 targets refusals |
+| Answering what the library cannot is the weakest behavior | 43% of the 227 questions with no answer in the library got one anyway; two prompt changes did not move it (Run 012b: +3.5 points, -1.3 to +8.5) | The generator is the next lever, not the prompt |
+| A small model copies a quoted line | Prompt v2's quoted refusal opened 92 of 95 answerable answers, and 90 of them answered anyway | Never give the 4B model a sentence to open with; change one rule at a time |
 | The scorer needed the same scrutiny as the model | Openers counted as claims, literal canary checks and a narrow refusal detector moved the headline numbers by up to 12 points | Every score carries its scorer version; old scores are archived, not mixed |
 
 ## What it is for
@@ -461,7 +487,7 @@ This capability does not belong on a personal computer. Responses to supervisors
 <a href="/images/projects/gemma-grc-spec-roadmap-light.svg" class="block" target="_blank" rel="noopener">
 <picture>
 <source srcset="/images/projects/gemma-grc-spec-roadmap-dark.svg" media="(prefers-color-scheme: dark)" />
-<img src="/images/projects/gemma-grc-spec-roadmap-light.svg" alt="Roadmap. Done: in August 2026 fine-tuning on my notes raised fabrication; in August retrieval shipped and the search model was tuned; on 25 September the fail-closed gate, provenance classes and MCP tool; from 25 to 28 September the public lanes and eval v3; from 28 to 29 September the temporal router and the judge tests; from 1 to 2 October the Run 011 baseline and scorer 2026-10-01.1. Next: the 100-pair audit and the eval freeze; Run 012, one prompt change for refusals and citations; fixing the quote controls and replacing the relevance juror; retrieval work on stemming, an embedder trial and a clean retrain of the search model; Gemma 4 E4B against Gemma 3 4B; and a policy alignment prototype." width="517" height="777" loading="lazy" decoding="async" class="mx-auto w-full max-w-[517px] h-auto" />
+<img src="/images/projects/gemma-grc-spec-roadmap-light.svg" alt="Roadmap. Done: in August 2026 fine-tuning on my notes raised fabrication; in August retrieval shipped and the search model was tuned; on 25 September the fail-closed gate, provenance classes and MCP tool; from 25 to 28 September the public lanes and eval v3; from 28 to 29 September the temporal router and the judge tests; from 1 to 2 October the Run 011 baseline and scorer 2026-10-01.1; from 6 to 12 October prompt Runs 012 and 012b and the eval grown to 749 questions. Next: the 100-pair audit and the eval freeze; Gemma 4 E4B against Gemma 3 4B; fixing the quote controls and replacing the relevance juror; retrieval work on stemming, an embedder trial and a clean retrain of the search model; the citation rule on its own; and a policy alignment prototype." width="517" height="777" loading="lazy" decoding="async" class="mx-auto w-full max-w-[517px] h-auto" />
 </picture>
 </a>
 <figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Figure 9 · Done and next · <a href="/images/projects/gemma-grc-spec-roadmap-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
@@ -470,16 +496,16 @@ This capability does not belong on a personal computer. Responses to supervisors
 Each item has a definition of done.
 
 1. **Freeze eval v3.** My 100-pair audit comes first; if my agreement with Claude is low, the answer key gets rebuilt. Done when the sha256 is recorded and Run 011 is scored again against the frozen set.
-2. **Run 012, refusals and citations.** One change to the grounding prompt, aimed at answering questions the library cannot and at loose citations, measured against Run 011 router on with the paired bootstrap. Done when refusals on those questions rise without wrong refusals rising, or the change is dropped.
+2. **The generator.** Gemma 4 E4B, with thinking off, against Gemma 3 4B behind the same library, with Granite as a control. Two prompt runs did not move refusals, so this is the next lever. Claim-level judging decides.
 3. **Judges.** Rebuild the quote controls from the sentence that answers the question, rerun Granite Guardian and gpt-oss, and decide whether a Tier 2 judge earns its cost. Replace Gemma 4 E4B as a relevance juror. Done when the control table above is rerun with every judge.
 4. **Retrieval.** Add stemming to BM25, trial granite-embedding-english-r2 as the dense model, retrain the search model on clean data only, and add canaries for phrasings that miss. "Do our generative AI models fall under SR 11-7?" currently retrieves no page of SR 26-2. Done when gold hit improves on the frozen set without a canary regressing.
-5. **The generator.** Gemma 4 E4B, with thinking off, against Gemma 3 4B behind the same library, with Granite as a control. Claim-level judging decides.
+5. **Citation rule.** On its own, against the shipping prompt, after the generator decision. Bundled into Run 012, it made no measurable difference to stray bracketed numbers.
 6. **Policy alignment prototype.** On public texts and a sample policy, measuring false "covered" first.
 7. **Serving.** Offer retrieval as a local tool to the small model my other agents use for local work, with the provenance boundary enforced at the tool.
 
 ## Known limitations
 
-- **It answers what the library cannot.** In Run 011 it declined only 56% of questions whose answer is not in the library; the rest got an answer assembled from nearby passages. This is the first thing to fix.
+- **It answers what the library cannot.** In Run 011 it declined only 57% of the 227 questions whose answer is not in the library; the rest got an answer assembled from nearby passages. Two prompt changes did not fix it (Runs 012 and 012b).
 - **The generator misreads.** Negation and list scope trip it up. It wrote that the 2026 guidance covers generative AI one sentence before saying it does not. It also wrote that SR 11-7 was superseded "by SR 26-2 and SR 21-8", when SR 26-2 superseded both. In Run 011, two of three samples got the date of the Commission's fines for general-purpose AI providers wrong.
 - **Citations are loose.** 63% of cited claims are supported by the passage they cite. 8% of answers carry a bracketed number that is not a passage the model was shown; nearly all are reference markers copied from the source, which a reader could mistake for citations.
 - **Eight passages is really six to eight.** The 13,000-character budget cut the prompt to six or seven passages for 115 of 450 questions.
@@ -519,9 +545,11 @@ Python 3.12. MLX 0.32.3, with mlx-lm pinned to a commit on its main branch for t
 - The question-answering tool decodes greedily. Evaluation runs pin a seed for every question and sample.
 - Every run writes its configuration (model, build, k, router, temperature, eval hash, corpus fingerprint, prompt hash and library versions) and refuses to resume under a different one.
 - Every score records the version of the scorer that produced it and the verdict for each claim. Scores from another version are archived, never mixed, and scores are reused across runs only within a version.
-- 90 unit tests cover the rules, parsers, router and scoring without loading a model.
+- A test set may grow under a run only when every question the run has already answered is still in it, and the replaced eval fingerprints stay in the run's configuration.
+- 92 unit tests cover the rules, parsers, router and scoring without loading a model.
 
 ### Versions of this document
 
+- **v1.2.** The no-answer questions tripled (80 to 227 in test; 749 usable in all), Run 011 refusal figures updated, the prompt experiments (Runs 012 and 012b) and their verdict, and the next steps reordered, as of 12 October 2026.
 - **v1.1.** Run 011 results under scorer 2026-10-01.1, how the scorer changed and why, and refreshed findings, next steps and limitations, as of 2 October 2026.
 - **v1.0.** The system as it stood on 29 September 2026, before the Run 011 results.
