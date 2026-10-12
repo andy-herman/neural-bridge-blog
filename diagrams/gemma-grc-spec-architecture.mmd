@@ -17,7 +17,7 @@ flowchart TB
   end
   subgraph MEASURE["MEASURE · clean build only"]
     direction LR
-    EV["Eval v3<br/>564 questions"] --> RUN["A run changes<br/>one thing"]
+    EV["Eval v3<br/>749 questions"] --> RUN["A run changes<br/>one thing"]
     RUN --> JUDGE{{"Control-tested<br/>judges"}}
     JUDGE --> SCORE["Scores with<br/>confidence intervals"]
   end
