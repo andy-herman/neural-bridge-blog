@@ -2,6 +2,7 @@
 title: "Before I Fixed the Model, I Had to Fix the Grader"
 description: "The first end-to-end baseline of my compliance assistant: what a library of primary texts is worth against the model's memory, how my grader overstated failure until I read the answers, and why a prompt change died in 22 minutes."
 pubDate: 2026-10-08
+updatedDate: 2026-10-12
 project: gemma-grc
 tags: ["gemma-grc", "evaluation", "llm-as-judge", "rag", "prompt-engineering", "grc", "compliance", "build-in-public"]
 draft: false
@@ -80,7 +81,7 @@ The model had not become cautious. It opened 92 of 95 answerable answers with "T
 
 The gate saved about nine hours of generation and scoring. The lesson went into my lab notebook as one line: never hand a small model a sentence to open with.
 
-The bigger mistake was mine. I changed three rules at once, so when the run failed I couldn't tell which rule had caused it. Run 012b changes one: the scope check alone, with the original refusal wording and nothing quoted. It passed the gate this morning, with 1 wrong refusal in 95. On the no-answer questions in that quick pass it declined 10 of 19, not obviously better than before, but 19 questions can't tell. The full run, compared question by question against the baseline, is running as I write this.
+The bigger mistake was mine. I changed three rules at once, so when the run failed I couldn't tell which rule had caused it. Run 012b changes one: the scope check alone, with the original refusal wording and nothing quoted. It passed the gate this morning, with 1 wrong refusal in 95. On the no-answer questions in that quick pass it declined 10 of 19, not obviously better than before, but 19 questions can't tell. The full run, compared question by question against the baseline, was still running when I wrote this. The result is in the update below.
 
 ## Things that broke at night
 
@@ -92,9 +93,19 @@ A tool that measures itself overnight needs to survive the night. This one didn'
 
 Both memory caches are now capped and emptied as the run goes. Each step retries a few times and then stops cleanly, rather than scoring half a run. After the fixes, I regenerated two answers from the first pass to check that nothing had shifted. Both came back word for word.
 
+## Update, 12 October: the scope rule, settled
+
+Run 012b finished that evening. On the 80 questions the library can't answer, the scope rule raised refusals by 6 points, but the 95% interval ran from about -1 to +14. That was too wide to call.
+
+I had written the decision rule before the run: adopt the change only if refusals rise with an interval above zero. So instead of loosening the rule after seeing the result, I added more no-answer questions. They went through the same pipeline as the originals: written, pooled, judged, graded, and dropped if the library turned out to hold the answer after all. 185 new questions survived, taking the test set from 80 no-answer questions to 227, and the whole test set from 564 questions to 749.
+
+On the larger set, the gain shrank to 3.5 points (interval -1.3 to +8.5). Prompt wording is not the lever for refusals. The baseline now declines 57% of the questions it should, against 3.5% from memory.
+
+The scope rule did one thing clearly. It cut answers with an unsupported claim by about 4 points, at the cost of slightly more wrong refusals, from 1.0% to 2.3%. That might be worth having, but adopting it on those grounds now would mean changing the rule after the fact, so it would need its own test. The shipping prompt stays as it is.
+
 ## What happens next
 
-The 100-pair audit of the answer key is still mine to do. Until it's done, every number here is provisional, although freezing the test set means scoring again, not generating again. Then come Run 012b's verdict and the citation rule tested on its own. Only after that does the newer Gemma get swapped in behind the same library.
+The 100-pair audit of the answer key is still mine to do. Until it's done, every number here is provisional, although freezing the test set means scoring again, not generating again. Next, the newer Gemma goes in behind the same library. Two prompt runs barely moved refusals, so the model itself is the next thing to test.
 
 ## Read twenty answers
 
