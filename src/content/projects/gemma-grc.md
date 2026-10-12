@@ -40,9 +40,11 @@ At query time, hybrid search fuses BGE embeddings with BM25 and keeps the top ei
 ## What the lab found
 
 - **Fine-tuning a model on my notes made it worse.** On a 1B model, fabrication rose from one answer in five to nearly half. It learned the register without the facts.
-- **Retrieval was the biggest gain.** Answer quality rose by almost a full point on a five-point scale. That was measured on an earlier setup; the current one has not been measured end to end yet.
+- **Retrieval was the biggest gain, and the end-to-end baseline confirms it.** On 589 test questions (Run 011), 82% of claims were supported by a right passage, against 23% when the same model answered from memory. With the library it declines 57% of the questions it cannot answer; from memory, 3.5%.
 - **The one fine-tune that paid off was the search model**, about 120 times smaller than the language model. Fine-tuned for nine minutes, it put the right passage in the top four 79% of the time, up from 71%. The version in use now is a later, longer retrain.
 - **Measurement was the hardest problem.** One judge passed nearly everything. Another missed the answer in its own source passage 62% of the time, until it was repaired. Even repaired, it misses about one in five.
+- **The grader needed as much testing as the model.** The first scoring of that baseline judged an answer's opening line as an unsupported claim and read canary dates too literally. Fixed and rescored, answers with an unsupported claim fell from 36% to 25%, and most of what remains is a single sentence of commentary.
+- **Prompt wording did not fix refusals.** Telling the model to check that the passages answer the exact question raised refusals by 3.5 points on 227 questions the library cannot answer, an interval that includes zero. A quoted refusal sentence was worse: the 4B model opened nearly every answer with it, then answered anyway.
 
 ## Governance
 
@@ -63,12 +65,21 @@ My first gate read private flags but not classification labels. A self-audit fou
 
 - [It Learned How I Sound, Not What I Know](/posts/it-learned-how-i-sound): what a small private model is actually good for in compliance work.
 - [When the Instrument Is the Bottleneck](/research/when-the-instrument-is-the-bottleneck): the full lab write-up, with every run, its confidence interval and the instruments that failed.
+- [The Law Moved in July. My Assistant Didn't.](/posts/the-law-moved-in-july): the library of primary texts, the test set and the canaries for facts that changed in 2026.
+- [Before I Fixed the Model, I Had to Fix the Grader](/posts/fixed-the-grader-first): the first end-to-end baseline, the grader's faults and the prompt experiments.
 
 ## What's next
 
-The public-text lane was finished on 2026-09-25: 58 official sources, including EU acts through CELLAR (EUR-Lex blocks scripts), UK legislation from legislation.gov.uk and NIST's OSCAL catalogues. Still to do:
+Done since the public-text lane was finished on 2026-09-25:
+- a 749-question test set with several correct passages per question;
+- an end-to-end baseline;
+- a router for questions about when rules apply, after which both AI Act date canaries pass;
+- claim-level judging, tested on 272 controls before use;
+- two prompt experiments.
 
-- A new evaluation set, being built now: 360 or more questions with several correct passages each, candidates pooled from four retrievers and graded by a two-judge jury, with me adjudicating blind. Claim-level judging is a later phase and not built yet.
-- An end-to-end re-baseline of the stack as it ships today.
-- An A/B against Gemma 4 E4B, with Granite as a control.
-- A fix for date questions. In the first canary checks the retriever found the right passage for 5 of 8 questions, and both AI Act date questions missed the article that sets when the Act applies. The model supplied a stale date, in one case citing passages with no date in them.
+Still to do:
+
+- My blind audit of 100 graded pairs, then freezing the test set.
+- An A/B against Gemma 4 E4B behind the same library, running now. Granite as a control comes after.
+- Fewer answers to questions the library cannot answer, and tighter citations.
+- Retrieval: stemming for keyword search, an embedding trial and a clean retrain of the search model.
