@@ -10,7 +10,7 @@ flowchart TB
   subgraph SERVE["SERVE · no network"]
     direction LR
     Q["Question<br/>from me"] --> RET["Hybrid search,<br/>temporal router,<br/>top 8 passages"]
-    RET --> GEN["Gemma 3 4B<br/>grounding prompt"]
+    RET --> GEN["Gemma 4 E4B<br/>grounding prompt"]
     GEN --> ANS["A citation per claim,<br/>or what is missing"]
     AG["Question from<br/>my agents"] --> MCP{{"MCP boundary<br/>owner-only"}}
     MCP --> RET

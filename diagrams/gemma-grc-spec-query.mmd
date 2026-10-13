@@ -13,7 +13,7 @@ flowchart TB
   subgraph ANSWER["ANSWER · greedy decoding, on the Mac"]
     direction LR
     CTX["Each passage clipped<br/>to 2,000 characters,<br/>13,000 in total"] --> PR["Grounding prompt<br/>four rules"]
-    PR --> GEN["Gemma 3 4B<br/>instruct, 4-bit, MLX"]
+    PR --> GEN["Gemma 4 E4B<br/>Q4_K_M, Ollama,<br/>thinking off"]
     GEN --> CITED["A citation per claim,<br/>labels carried through"]
     GEN --> MISS["Or what is missing<br/>and where it would be"]
   end
