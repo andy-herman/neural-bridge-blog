@@ -27,7 +27,7 @@ It is also a lab. Every change is a run with the hypothesis written down first, 
 <a href="/images/projects/gemma-grc-data-flow-light.svg" class="block" target="_blank" rel="noopener">
 <picture>
 <source srcset="/images/projects/gemma-grc-data-flow-dark.svg" media="(prefers-color-scheme: dark)" />
-<img src="/images/projects/gemma-grc-data-flow-light.svg" alt="Gemma GRC data flow. At build time, on the Mac with no model involved, my notes pass a fail-closed confidentiality gate; labelled, flagged or bannered notes are held back with the reason logged. Cleared notes are chunked and redacted, and join primary public regulatory sources, fetched with their licence recorded, in a stamped and fingerprinted index. At query time, with no network, the index is checked against its corpus and model, a hybrid dense and keyword search finds passages, and Gemma 3 4B answers only from them, citing each claim or naming what is missing." width="1194" height="673" loading="lazy" decoding="async" class="w-full h-auto" />
+<img src="/images/projects/gemma-grc-data-flow-light.svg" alt="Gemma GRC data flow. At build time, on the Mac with no model involved, my notes pass a fail-closed confidentiality gate; labelled, flagged or bannered notes are held back with the reason logged. Cleared notes are chunked and redacted, and join primary public regulatory sources, fetched with their licence recorded, in a stamped and fingerprinted index. At query time, with no network, the index is checked against its corpus and model, a hybrid dense and keyword search finds passages, and Gemma 4 E4B answers only from them, citing each claim or naming what is missing." width="1194" height="673" loading="lazy" decoding="async" class="w-full h-auto" />
 </picture>
 </a>
 <figcaption class="mt-3 font-mono text-[11px] uppercase tracking-wider text-cream-800 dark:text-cream-300">Build time and query time · <a href="/images/projects/gemma-grc-data-flow-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a></figcaption>
@@ -35,7 +35,7 @@ It is also a lab. Every change is a run with the hypothesis written down first, 
 
 My notes pass a scope check and a fail-closed confidentiality gate, then are chunked, redacted and stamped with a content-hash ID and a provenance class: public, own, or other (local only). Public regulatory texts come in on a separate lane that accepts only official hosts over https and records each text's licence. The default library is 7,167 chunks: 1,178 from my notes and 5,989 from public texts.
 
-At query time, hybrid search fuses BGE embeddings with BM25 and keeps the top eight passages. There is no reranker; one made results worse when I tried it. As many passages as fit a fixed budget go to Gemma 3 4B, running locally, which answers with a bracketed citation per claim or names what is missing.
+At query time, hybrid search fuses BGE embeddings with BM25 and keeps the top eight passages. There is no reranker; one made results worse when I tried it. As many passages as fit a fixed budget go to Gemma 4 E4B, running locally, which answers with a bracketed citation per claim or names what is missing. It replaced Gemma 3 4B on 13 October.
 
 ## What the lab found
 
@@ -45,6 +45,7 @@ At query time, hybrid search fuses BGE embeddings with BM25 and keeps the top ei
 - **Measurement was the hardest problem.** One judge passed nearly everything. Another missed the answer in its own source passage 62% of the time, until it was repaired. Even repaired, it misses about one in five.
 - **The grader needed as much testing as the model.** The first scoring of that baseline judged an answer's opening line as an unsupported claim and read canary dates too literally. Fixed and rescored, answers with an unsupported claim fell from 36% to 25%, and most of what remains is a single sentence of commentary.
 - **Prompt wording did not fix refusals.** Telling the model to check that the passages answer the exact question raised refusals by 3.5 points on 227 questions the library cannot answer, an interval that includes zero. A quoted refusal sentence was worse: the 4B model opened nearly every answer with it, then answered anyway.
+- **A newer model did.** Gemma 4 E4B, behind the same library and prompt, declines 93% of the questions the library cannot answer, against 57%. Answers with an unsupported claim fell from 25% to 6%, cited passages support their claims 95% of the time instead of 63%, and it answers about twice as fast. The first run missed one of the rules I had set in advance, because the grader counted it as wrong to decline when search had not found the passage. I fixed that rule before a second run on fresh samples, and that run decided the swap.
 
 ## Governance
 
@@ -75,11 +76,12 @@ Done since the public-text lane was finished on 2026-09-25:
 - an end-to-end baseline;
 - a router for questions about when rules apply, after which both AI Act date canaries pass;
 - claim-level judging, tested on 272 controls before use;
-- two prompt experiments.
+- two prompt experiments;
+- a switch to Gemma 4 E4B, decided by a second run on fresh samples.
 
 Still to do:
 
 - My blind audit of 100 graded pairs, then freezing the test set.
-- An A/B against Gemma 4 E4B behind the same library, running now. Granite as a control comes after.
-- Fewer answers to questions the library cannot answer, and tighter citations.
-- Retrieval: stemming for keyword search, an embedding trial and a clean retrain of the search model.
+- Retrieval, now the main lever: when search misses the passage, Gemma 4 declines instead of guessing. Stemming for keyword search, an embedding trial and a clean retrain of the search model.
+- Naming what replaced what. Two canaries got worse with Gemma 4: it can say a guidance was replaced without naming its successor. A prompt rule for that, tested on its own.
+- Replacing Gemma 4 as one of the two relevance judges that built the test set, now that it is also the model under test.

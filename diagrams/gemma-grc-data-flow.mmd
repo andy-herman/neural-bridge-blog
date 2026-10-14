@@ -14,7 +14,7 @@ flowchart TB
     Q["Question"] --> CHECK{{"Index matches<br/>corpus and model?"}}
     CHECK -- "no" --> REFUSE["Refuse<br/>to run"]
     CHECK -- "yes" --> SEARCH["Hybrid search<br/>dense + keyword"]
-    SEARCH --> GEN["Gemma 3 4B<br/>answers only from<br/>the passages"]
+    SEARCH --> GEN["Gemma 4 E4B<br/>answers only from<br/>the passages"]
     GEN --> ANS["A citation per claim,<br/>or names what<br/>is missing"]
   end
   BUILD == "search the index" ==> QUERY
