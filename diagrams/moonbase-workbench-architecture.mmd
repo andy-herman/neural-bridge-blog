@@ -1,0 +1,25 @@
+flowchart TB
+  accTitle: Moonbase Workbench system boundary
+  accDescr: The private browser reaches authenticated HTTP actions and current SSE snapshots. Versioned records feed a server-owned supervisor and only Moonbase-owned native SDK sessions. Explicit approved helpers reach the scoped worktree, while artifacts and receipts return to private state. The optional habitat receives bounded projections and separate read-only Neural Bridge observations.
+  Browser["Private browser: Workbench"]
+  Auth["Session and RBAC checks"]
+  API["HTTP actions and SSE snapshots"]
+  State["Versioned private records"]
+  Supervisor["Server-owned supervisor"]
+  Native["Moonbase-owned SDK session"]
+  Workspace["Scoped project worktree"]
+  Artifacts["Immutable artifacts and verification receipts"]
+  Room["Optional habitat and existing PTYs"]
+  Observed["Read-only Neural Bridge observations"]
+  Browser --> Auth
+  Auth --> API
+  API <--> State
+  State --> Supervisor
+  Supervisor <--> Native
+  Native -->|"Explicit approved helpers"| Workspace
+  Workspace --> Artifacts
+  Artifacts --> State
+  Supervisor -->|"Live state"| API
+  API -->|"Current receipts"| Browser
+  State -->|"Bounded current projection"| Room
+  Observed --> Room

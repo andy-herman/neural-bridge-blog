@@ -1,0 +1,411 @@
+---
+title: "Moonbase Persistent Agent Workbench: technical specification"
+description: "The implemented contracts for versioned specialists, owner-directed native runs, curated knowledge, reviewed outcomes, scoped memory and history-safe maintenance."
+abstract: "Moonbase adds a persistent, server-owned workbench to an existing private agent workspace. This specification describes the profile/workstream/run model, immutable context grants, native SDK ownership, exact tool approvals, artifact verification and owner-reviewed memory. It separates the deployed application from isolated native evidence and a source-only scoped-maintenance correction, and records authentication, billing, sandboxing and lifecycle limits."
+pubDate: "2026-10-13"
+updatedDate: "2026-10-13"
+topic: "development-playbooks"
+tags: ["moonbase", "agents", "workbench", "technical-specification", "architecture"]
+status: "published"
+version: "v1.0"
+draft: false
+---
+
+## 1. Scope and implementation status
+
+This is an engineering specification of the implemented first Workbench
+release, with evidence dated October 13, 2026. It is not a peer-reviewed
+performance study, a claim of autonomous quality or a provider-billing
+guarantee. The companion [build article](/posts/moonbase-persistent-agent-workbench/)
+explains the product change; the [Moonbase hub](/projects/moonbase/) retains
+the project's history.
+
+The private application is deployed with authenticated Workbench routes.
+Actual local desktop and resized-mobile browser captures establish the
+working UI, live receipt stream and idle state. Native behavior was separately
+exercised through four isolated Copilot submissions: one retained initial
+failure and three successful tasks. Claude SDK activation remains blocked
+pending permitted documented authentication.
+
+A subsequent scoped-maintenance correction is merged and validated in source
+and controlled fixtures. It is not installed as a new production helper or
+a new admission profile for the restarted application. References to that
+correction below state its implemented source contract, not a live maintenance
+deployment result.
+
+## 2. Product goal and non-goals
+
+The goal is an owner-directed interface for durable specialist work: assign a
+deliverable, leave the browser, check progress, direct a later turn, inspect
+artifacts and retain reviewed lessons. A specialist's behavior is shaped by
+versioned instructions, examples, selected tools, explicitly granted knowledge
+and scoped approved memory.
+
+The first release does not train model weights, adopt existing desktop
+conversations, copy personal-bot memory, recursively ingest a vault or launch
+paid idle loops. It does not supply an OS sandbox, universal process-absence
+attestation, automatic fact checking, a hard monetary limit or a general
+publishing/merge authority.
+
+The 3D habitat remains optional. Existing PTY workers, missions, queues,
+project floors, meetings and the whiteboard retain separate contracts.
+Read-only Neural Bridge observations do not become controllable SDK sessions.
+
+## 3. System boundary and components
+
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Workbench components and responsibilities">
+
+| Component | Responsibility |
+|---|---|
+| Independent 2D Workbench | Task composition, live receipts, profiles, sources, decisions, outcome review and memory. |
+| Authenticated Node server | Session/RBAC enforcement, record validation, capacity accounting and HTTP/SSE delivery. |
+| Server-owned supervisor | Explicit backlog dispatch, native lifecycle, direction at turn boundaries and cleanup accounting. |
+| Native adapter | Moonbase-created provider session, structured messages/tool events and provider-reported usage. |
+| Project workspace | Owned run worktree, constrained file operations and approved verification. |
+| Private durable store | Versioned records, ordered events/checkpoints, immutable artifacts and activity inventory. |
+| Optional habitat | Existing real PTYs and truthful projections through original Blender stations. |
+| Read-only observer | Minimal observations of external Neural Bridge runtimes, without dispatch or session adoption. |
+
+</div>
+
+<figure class="not-prose my-10 lg:-mx-24">
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Moonbase Workbench system-boundary diagram">
+<a href="/images/projects/moonbase-workbench-architecture-light.svg" class="block min-w-[815px]" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/moonbase-workbench-architecture-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/moonbase-workbench-architecture-light.svg" alt="The private browser reaches authenticated HTTP actions and SSE snapshots. Versioned records feed a server-owned supervisor and Moonbase-owned native sessions. Approved helpers reach a scoped worktree and return immutable artifacts and receipts. The optional habitat receives bounded projections and separate read-only Neural Bridge observations." width="815" height="673" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+</div>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">Current component and ownership boundary. Scroll horizontally if needed, or open full size in <a href="/images/projects/moonbase-workbench-architecture-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">light</a> or <a href="/images/projects/moonbase-workbench-architecture-dark.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">dark</a>.</figcaption>
+</figure>
+
+The snapshot/event path is observational. It does not replay actions after a
+browser reconnect and does not renew a lease that keeps a native task alive.
+The host must remain available; a browser-independent supervisor is not a
+machine-reboot or always-on cloud availability guarantee.
+
+## 4. Runtime and interface surface
+
+Implementation pins are a release snapshot, not a claim about the vendors'
+latest available versions.
+
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Reviewed runtime and technology versions">
+
+| Technology | Reviewed implementation |
+|---|---|
+| Server and shared contracts | TypeScript and Node; reviewed local host uses Node 22.22.2. |
+| Workbench client | Independent DOM/Vite entry, usable without WebGL. |
+| Optional room | Three.js with reproducible Blender GLB assets. |
+| GitHub Copilot | SDK 1.0.19, bundled runtime 1.0.95. |
+| Claude Agent | SDK 0.3.296, bundled runtime 2.1.296. |
+| Record validation | Zod 4.3.6 plus bounded physical-path/file readers. |
+| Private remote access | Cloudflare Access plus application authentication; local host remains the origin. |
+
+</div>
+
+The primary post-login entrance is `/workbench`. `/room` retains the habitat;
+`/missions` retains the mission workspace; `/work` is the separate restricted
+finite bridge. These are not aliases for a shared uncontrolled execution mode.
+
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Authenticated read interfaces">
+
+| Read interface | Meaning |
+|---|---|
+| `GET /api/workbench` | Current bounded authenticated Workbench snapshot. |
+| `GET /api/workbench/events` | Authenticated snapshot/heartbeat stream with repeated authority checks. |
+| `GET /api/workbench/inventory` | Typed counts for work, waits, cleanup, SDK/probes/verifiers and writer locks. |
+| `GET /api/admin` | Owner administration/status, including Workbench inventory. |
+
+</div>
+
+Mutation routes are server-owned actions with current revision and authority
+checks. Engine readiness is an explicit check, not part of page load.
+Unknown or unverified model catalogs are not populated from guesses.
+
+## 5. Durable data model
+
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Durable records and important bindings">
+
+| Record | Important bindings |
+|---|---|
+| Profile | Stable identity and versions of purpose, instructions, style, tools, examples, project/source grants and rubric. |
+| Workstream | Registered project, goal/version, selected sources, verification presets, priority backlog and paused state. |
+| Run | Owned worktree/native identity, engine/model request, pinned profile/workstream/context versions, limits, revision and lifecycle. |
+| Source | Exact selected text-file identity/version, relative path, size, timestamp, hash and inclusion/freshness/revocation state. |
+| Permission | One run/session/profile/action-bound request, current authority and one-use decision. |
+| Artifact/outcome | Exact captured content/workspace hashes, source/profile/engine provenance, diff and verification receipts. |
+| Memory lesson | Originating run, profile/workstream scope, displayed versions and proposed/approved/revoked/deleted state. |
+| Activity | Owned SDK connections, probes/verifier processes, writer locks and unresolved cleanup. |
+
+</div>
+
+Profile and workstream edits are versioned. Each explicit run captures its own
+context pins. Already queued or ongoing runs are not silently reconfigured by
+later edits or memory approval.
+
+Engineering, Teaching, Research and Content start as generic source-backed
+templates without project grants. Passive listing does not write them into
+durable state or open SDK/auth/model connections. An unknown existing subtree
+is refused rather than reset.
+
+## 6. Execution and approval protocol
+
+Task admission requires an administrator, a workstream, an explicitly granted
+profile/project relationship, verified permitted engine readiness and owner
+consent for the pinned context and scoped tools.
+
+The supervisor reserves existing whole-app capacity. SDK connections,
+readiness probes and legacy workers share that limit; an SDK run is not
+invisible because it lacks a PTY. A workstream does not overlap native runs
+or silently dispatch past outcome review.
+
+<figure class="not-prose my-10 lg:-mx-24">
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Moonbase exact-once approval and outcome-review sequence">
+<a href="/images/projects/moonbase-workbench-approval-sequence-light.svg" class="block min-w-[1121px]" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/moonbase-workbench-approval-sequence-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/moonbase-workbench-approval-sequence-light.svg" alt="An explicit owner task is bound to current profile and workstream versions. The server checks grants and capacity, starts its native session, and binds a requested tool action to an exact one-use decision. It rechecks authority before executing. The owner reviews real artifacts and receipts, and acceptance rechecks current workspace and artifact bytes." width="1121" height="1203" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+</div>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">Task consent, exact tool permission and outcome acceptance are separate decisions. Scroll horizontally if needed, or open full size in <a href="/images/projects/moonbase-workbench-approval-sequence-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">light</a> or <a href="/images/projects/moonbase-workbench-approval-sequence-dark.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">dark</a>.</figcaption>
+</figure>
+
+Semantic answers, direction, tool permission, outcome acceptance and memory
+approval are distinct actions. Natural language does not grant a file write,
+network egress, publishing or merge. There is no approve-all permission mode
+in the constrained Moonbase helpers.
+
+Direction is durable and admitted once at an appropriate native turn boundary.
+A checkpoint records local evidence without a new model prompt. Stop requests
+cleanup and pauses backlog dispatch; requested cancellation is not confirmed
+cleanup. Owner waits pause the active-time allowance without generating paid
+reminders.
+
+Resume requires explicit consent, confirmed cleanup and unchanged pins.
+Switching engine creates a new run/worktree/native identity with an approved
+structured handoff. It does not migrate hidden conversation or restore revoked
+context.
+
+## 7. Native ownership and authentication
+
+Only native sessions created in Moonbase's private SDK namespace are resumable.
+Existing desktop chats are not adopted, controlled or presented as new
+Moonbase tasks. SDK messages and tool receipts are structured events, not
+fabricated terminal output.
+
+Ambient instruction/configuration/plugin/skill discovery, shared native
+memory/session retrieval and built-in tool access are constrained by the
+adapters. Selected model IDs come from a verified catalog or an explicit
+native default; the actual reported model/version belongs in the receipt.
+Failures do not silently switch accounts, providers or paid routes.
+
+Copilot uses its documented existing CLI-authentication flow. The current
+production screenshot shows readiness as unchecked, not a newly certified
+catalog or logged-in execution state.
+
+Claude Agent is blocked until an operator verifies an already configured
+permitted documented authentication route. Third-party use of claude.ai login
+or allowance requires prior approval under the vendor's published SDK policy.
+An installed desktop subscription, the legacy mission CLI and the SDK are
+different authorization surfaces.
+
+## 8. Knowledge selection and memory
+
+The supported knowledge inputs are individually selected UTF-8 `.md`,
+`.markdown` and `.txt` files, including bounded text uploads. PDF/Office
+parsing, recursive ingestion, paid embeddings and a public vector index are
+not part of this release.
+
+A selected local file must belong to its registered project or an explicitly
+allowed operator document root. The private vault connector is off by default.
+Browser absolute paths, traversal, symlinked roots/ancestors/files, hard links,
+credentials and private/native state are rejected.
+
+Registration creates source identity/version/hash receipts. Inclusion requires
+both profile and workstream grants. Local lexical retrieval returns bounded
+passages with actual source/version/hash/line citations, not invented references.
+Documents remain untrusted evidence, never permission instructions.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/moonbase/workbench-knowledge-memory-2026-10-13.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/moonbase/workbench-knowledge-memory-2026-10-13.webp" alt="Actual local Moonbase knowledge and memory panels show no registered sources or lessons. The example docs/guide.md text is an input placeholder, and the memory notice distinguishes proposed lessons from approved context." width="1362" height="759" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">Actual local knowledge/memory panels, naturally framed on October 13. No source or lesson is registered in this capture. The visible example path is a placeholder, not evidence of ingestion or an approved memory. <a href="/images/moonbase/workbench-knowledge-memory-2026-10-13.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+Changed, missing, refreshed or revoked sources invalidate affected active
+context. Previously sent native prompts cannot be erased, so changed grants
+require a new explicitly approved run instead of silent context substitution.
+
+Memory follows a separate owner review:
+
+<figure class="not-prose my-10 lg:-mx-24">
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Moonbase scoped memory approval and revocation diagram">
+<a href="/images/projects/moonbase-workbench-memory-scope-light.svg" class="block min-w-[605px]" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/moonbase-workbench-memory-scope-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/moonbase-workbench-memory-scope-light.svg" alt="A proposed lesson has origin and scope but remains excluded. The owner reviews its displayed version, approval commits with a revision check, and a later explicit run pins the approved version. Revocation or deletion excludes it from later runs without rewriting earlier snapshots." width="605" height="361" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+</div>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">Only committed approved lessons enter later task snapshots. Scroll horizontally if needed, or open full size in <a href="/images/projects/moonbase-workbench-memory-scope-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">light</a> or <a href="/images/projects/moonbase-workbench-memory-scope-dark.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">dark</a>.</figcaption>
+</figure>
+
+The approval must commit before a later snapshot. A pending UI request is not
+approval, and an old queued run retains its earlier pins. Approved lessons
+carry profile/workstream scope, version/hash and originating-run provenance.
+They are not global-vault edits, provider memory adoption or model fine-tuning.
+
+## 9. Outcomes, verification and usage
+
+Completion produces a reviewable outcome, not automatic acceptance. Receipts
+bind artifacts, changed files, captured diff, branch/base/head, provider/native
+session and profile/context provenance. Verification records the actual
+selected command, exit, output and workspace state. Owner acceptance rechecks
+current artifact/workspace bytes, so stale evidence is not a passing review.
+
+Verification presets are fixed choices such as diff whitespace checks, Node
+tests and npm test/build/typecheck. The workstream selects which are available,
+and execution requires exact approval. A project test can execute project
+code. Its sanitized environment/private home is a containment measure, not
+an OS sandbox; untrusted project code remains a real risk.
+
+Literal evaluation examples check specified phrases/citations. They do not
+certify factual correctness, teaching quality or complete test coverage.
+Whitespace-only verification cannot be labeled a full project pass.
+
+Usage stores the units and coverage reported by the provider, which may include
+tokens, USD estimates or nano-AIU. Missing usage is unavailable, not zero.
+Account quota and premium multipliers are not per-run dollars or credits.
+The implementation does not invent conversions or a hard spending guarantee.
+Legacy mission billing is separate from SDK-run accounting.
+
+Opaque Copilot usage identifiers are normalized using a complete session-bound
+identity digest, not truncation. Unsafe/malformed accounting refuses before
+effects instead of manufacturing a valid-looking receipt.
+
+Turn and active-time allowances are operational bounds. A client-observed
+turn Stop is not a provider pre-call charge guarantee. Owner waits and cleanup
+states must remain visible when interpreting those limits.
+
+## 10. Persistence, observation and failure semantics
+
+New bounded owner-only records occupy a separate private Workbench subtree.
+Ordered events rotate into immutable hash-verified checkpoints; artifacts
+remain immutable. Atomic writes, physical path checks, current authority,
+revision checks and content/mode compare-and-swap protect state changes.
+
+Bounds, I/O, authority or CAS failures are explicit and can quarantine
+dispatch. They do not delete history or substitute a successful default.
+Absent state is established through a guarded physical-parent lookup;
+lookup errors or linked roots do not become empty state.
+
+Browser reconnect receives current snapshots without replaying task starts
+or tool decisions. Session and RBAC are rechecked on stream events and
+heartbeats. A replaced EventSource can be intentionally cancelled by browser
+lifecycle reconnect; observation tooling must distinguish that identity-bound
+replacement from a genuine transport failure.
+
+App shutdown closes owned SDK transports/verifiers and retains interrupted
+or unresolved-cleanup records. Verifier termination targets an owned child,
+not a recycled process group. Unconfirmed cleanup remains uncertainty; a late
+close cannot erase it. Abrupt-restart reattach is not presumed safe, and no
+paid replacement is automatically submitted.
+
+## 11. Optional assets and preserved foundation
+
+Moonbase retains the MIT-licensed Agent Office foundation, real PTYs,
+project/worktree/queue machinery and collaboration surfaces. Original Blender
+residents and laboratory props remain runtime models, not generated concept
+images mislabeled as application assets.
+
+The new task console, knowledge archive and review station have authored
+screen mounts, bounds, named nodes and material contracts. Their icons can
+load independently in the 2D Workbench. Habitat projections use current owned
+work/sources/decisions, and unavailable freshness is not rendered as activity.
+Workbench/login initialization never waits for GLB preload.
+
+## 12. History-safe deployment and scoped maintenance
+
+The completed configuration operation kept the application source unchanged,
+used a separately reviewed immutable helper and preserved 570 protected file
+byte/mode/ownership/size fingerprints, including retained mission/auth/floor
+state. Its complete originals were captured before any close. The existing
+v1 mission and completed records were not reset or migrated for convenience.
+
+Protected same-source maintenance requires a fresh complete one-use admission,
+with a maximum 120-second wall/monotonic validity through final readiness and
+journal publication. The sequence is one owned close before configuration
+CAS, natural exit of the exact empty host resources, closed-state checks,
+the captured configuration/plist delta, one bootstrap and final
+source/controller/history/resource/expiry checks.
+
+Failed journals and consumed tickets are retained. There is no reset, automatic
+retry, blind bootstrap or automatic rollback. An after-Stop failure requires
+prompt exact-state reporting and separately authorized recovery. A source
+merge, a prepared archive or a health 200 is not admission.
+
+The merged `moonbase-operation-v1` correction adds explicit scope binding to
+capture, archive, OS proof, independent review, consumed ticket and guarded
+apply. It rechecks live, unloading, closed, pre-CAS, between-CAS,
+pre-bootstrap and final boundaries. Legacy/default `global-host-v1`
+behavior is unchanged.
+
+Operation scope admits unrelated terminals only outside actual Moonbase
+conflicts. Owned lineage/groups, PTY claims/full descriptors, protected
+cwd/file readers/writers and controller/socket/TCP conflicts still refuse.
+Complete bounded fixed-probe evidence is privately bound and replayed through
+the same parsers. Names, same UID, apparent idleness or familiar parent
+applications are not exemptions.
+
+This scope is not universal absence of escaped/reparented work, signed
+execution attestation or an in-memory JavaScript measurement. Its current
+supported historical bootstrap profile does not authorize the restarted
+AFTER-config generation. Using it in future production maintenance requires
+a separately reviewed supported profile and immutable helper release.
+Regenerating old anchors to force admission is not supported.
+
+## 13. Acceptance evidence and remaining limits
+
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Acceptance evidence and remaining implementation limits">
+
+| Requirement | Evidence category and result |
+|---|---|
+| Browser-independent server ownership | Implemented lifecycle/cleanup controls and isolated real native workflows. |
+| Actual Workbench entrance | Live authenticated local HTTP, SSE and desktop 1440px/mobile 390px UI captures. |
+| Versioned profiles/context | Source/control evidence; current production has four ungranted templates and no activated workstreams. |
+| Native Copilot artifacts and memory | Four isolated submissions, three successful tasks, exact committed-memory follow-up. No new production model call for screenshots. |
+| Native Claude | Adapter controls covered; actual activation remains permitted-auth blocked. |
+| Preservation | Actual protected operation retained all 570 byte/mode records and original mission state. |
+| Unrelated-terminal maintenance | Merged source and owned-neutral-terminal fixture proof; global/launchd/controller seams accurately labeled, not live deployment proof. |
+| UI integrity | Actual 1440px and 390px document/client widths matched; three loaded station icons; no fabricated activity or CSP relaxation. |
+
+</div>
+
+Provider catalogs/authentication must be verified explicitly before new tasks.
+Discord delivery remains unconfigured without an owner destination. Physical
+phone interaction, a new Cloudflare sign-in, host reboot, sustained provider
+load and live execution under the new scoped-maintenance profile are not
+established by these captures.
+
+The design is intentionally inspectable before it is expansive. Its next
+useful evaluation is an explicitly granted project workload with real
+acceptance criteria, not more identities animated as busy.
+
+## References
+
+- [Moonbase project](/projects/moonbase/),
+  [Workbench article](/posts/moonbase-persistent-agent-workbench/) and
+  [original Moonbase article](/posts/building-moonbase/).
+- [Agent Office pinned foundation](https://github.com/AgentSystemLabs/agent-office/tree/44aecc1ecf175939bce2049123626aa2bcddd7e2)
+  and its [MIT license](https://github.com/AgentSystemLabs/agent-office/blob/44aecc1ecf175939bce2049123626aa2bcddd7e2/LICENSE).
+- [GitHub Copilot SDK](https://github.com/github/copilot-sdk),
+  [authentication](https://github.com/github/copilot-sdk/blob/main/docs/auth/authenticate.md)
+  and [usage/billing](https://github.com/github/copilot-sdk/blob/main/docs/features/usage-and-billing.md).
+- [Claude Agent SDK overview](https://code.claude.com/docs/en/agent-sdk/overview)
+  and [permissions](https://code.claude.com/docs/en/agent-sdk/permissions).
+
+Vendor references were reviewed on October 13, 2026. Their current documentation
+may evolve; the version table records Moonbase's reviewed implementation pins.

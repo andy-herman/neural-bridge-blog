@@ -1,0 +1,293 @@
+---
+title: "Moonbase: from an agent office to a persistent workbench"
+description: "Giving Moonbase durable specialist profiles, owner-directed background work, curated knowledge and reviewable memory, without inventing activity or authority."
+pubDate: 2026-10-13
+project: moonbase
+tags: ["moonbase", "neural-bridge", "agents", "copilot", "workbench", "build-in-public"]
+draft: false
+---
+
+The first version of Moonbase gave my agents a place to work. It had a lunar
+habitat, original Blender-made alien dinosaurs, real terminals and a careful
+distinction between an agent I had registered and work I had actually observed.
+That was a useful beginning, but it left a larger question unanswered: where
+should I go to give a specialist a job, leave it running, come back with
+direction and decide whether the result is good enough?
+
+The new goal is to make Moonbase that working interface. The room is still
+there, but it is no longer the entrance fee. A persistent Workbench now sits
+in front of it, with project workstreams, versioned specialists, selected
+knowledge, an owner decision inbox, artifacts and reviewable memory. The
+important change is not another animation. It is a durable connection between
+what I asked for, what the agent was allowed to use, what it actually did and
+what I accepted.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/moonbase/workbench-live-desktop-2026-10-13.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/moonbase/workbench-live-desktop-2026-10-13.webp" alt="The actual private Moonbase Workbench at a 1440px viewport, with the work entrance, since-visit summary, GitHub Copilot readiness marked unchecked and the Claude Agent route marked blocked." width="1440" height="1000" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The actual private Workbench, captured on October 13 at a 1440px viewport. The browser is receiving live server receipts, but no production task is running. Copilot readiness is unchecked and the Claude Agent route is auth-blocked. This is a real idle application, not generated activity. <a href="/images/moonbase/workbench-live-desktop-2026-10-13.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+This is a follow-up to [the original Moonbase build](/posts/building-moonbase/).
+The [project hub](/projects/moonbase/) links the two stages, and the
+[technical specification](/research/moonbase-workbench-technical-specification/)
+describes the current contracts in more detail. The application itself remains
+private and requires sign-in.
+
+## The goal changed from seeing work to directing it
+
+A room can show me where people are sitting. It cannot, by itself, explain
+which instructions a specialist is using, which documents it has seen or
+whether the file on its desk is the one I reviewed yesterday. Those questions
+matter more once I want to depend on the same specialist across a project.
+
+I want to give a coding specialist a deliverable, check in without keeping a
+browser open, steer the next turn and review a concrete artifact. I want a
+teaching or research specialist to use the practices and evidence I choose,
+not whatever happens to be discoverable on my machine. And I want useful
+lessons to survive a task without silently becoming global instructions.
+
+That is a more demanding goal than an agent dashboard. It needs continuity,
+but it also needs boundaries. Persistent does not mean endlessly spending
+tokens in the background. Dedicated does not mean a new model trained on all
+my files. Familiar does not mean an existing personal bot's memory or desktop
+conversation has been copied into another system.
+
+Moonbase's first Workbench slice makes those distinctions explicit.
+
+## Three records replace the idea of a single endless chat
+
+The central model is a **profile**, a **workstream** and a **run**.
+
+A profile is a stable specialist definition: purpose, instructions, style,
+examples, selected tools, completion criteria and knowledge grants. Saving an
+edit creates a version. Engineering, Teaching, Research and Content are the
+initial generic templates, not four activated personal agents.
+
+A workstream belongs to a registered project. It holds a goal, selected
+sources, verification presets and an owner-approved backlog. It gives the
+specialist a place to work without turning every brief into a new identity.
+
+A run is one execution with its own worktree, native session and pinned
+profile/context snapshot. Editing a profile does not quietly change an
+already queued task. That makes it possible to ask what a result was produced
+from, rather than reconstructing the answer from whichever settings happen
+to be visible now.
+
+<figure class="not-prose my-10 max-w-[673px] mx-auto" data-evidence="runtime-capture">
+<a href="/images/moonbase/workbench-task-composer-2026-10-13.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/moonbase/workbench-task-composer-2026-10-13.webp" alt="The actual empty Moonbase task composer shows the generic Engineering profile, no selected workstream or project grant, unchecked task consent, and a disabled Approve and queue task button. No task has been submitted." width="673" height="1055" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The actual local task-composer panel on October 13, naturally framed from the desktop layout. The task is empty, consent is unchecked and submission is disabled because no workstream/project grant is selected. Nothing was submitted for this capture. <a href="/images/moonbase/workbench-task-composer-2026-10-13.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+<figure class="not-prose my-10 lg:-mx-24">
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Moonbase owner-directed work diagram">
+<a href="/images/projects/moonbase-workbench-flow-light.svg" class="block min-w-[896px]" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/moonbase-workbench-flow-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/moonbase-workbench-flow-light.svg" alt="The owner directs a Workbench with pinned profile, workstream, sources and approved lessons. A server-owned supervisor starts an owned native SDK session. Exact approved actions reach the scoped project worktree; real artifacts, checks and receipts return for owner review." width="896" height="689" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+</div>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The browser observes and directs server-owned work. Reconnecting does not resubmit a task or replay a permission. Scroll horizontally if needed, or open full size in <a href="/images/projects/moonbase-workbench-flow-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">light</a> or <a href="/images/projects/moonbase-workbench-flow-dark.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">dark</a>.</figcaption>
+</figure>
+
+## Leave the page, not the job
+
+The supervisor lives on the server. Closing the Workbench page closes an
+observation stream, not the run. Returning gives me a current snapshot and
+since-visit summary rather than a guess based on the last browser session.
+The 2D entrance works without WebGL, character selection or the habitat's
+WebSocket.
+
+That separation also makes failure more honest. A disconnected browser is
+not a cancelled job. A requested Stop is not confirmed cleanup. A model
+finishing a turn is not an accepted deliverable. If cleanup cannot be
+established, Moonbase retains the uncertainty instead of launching a
+replacement and calling the result seamless.
+
+Background work is still work I explicitly approved. There are no paid idle
+loops, automatic reminders or unsolicited specialist schedules in this
+release. The local host also still needs to be available: moving control out
+of a browser did not turn my Mac into an always-on cloud service.
+
+<figure class="not-prose my-10 max-w-[390px] mx-auto" data-evidence="runtime-capture">
+<a href="/images/moonbase/workbench-live-mobile-2026-10-13.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/moonbase/workbench-live-mobile-2026-10-13.webp" alt="The actual private Moonbase Workbench at a resized 390px desktop-browser viewport, with wrapped navigation, the optional-room introduction, live-receipts controls and the first-visit summary." width="390" height="844" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The same actual application at 390px on October 13. This is a desktop browser resized for mobile layout verification, not a physical-phone or fresh remote-login test. The room is optional; the working interface does not need 3D. <a href="/images/moonbase/workbench-live-mobile-2026-10-13.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+## Knowledge is a grant, not a folder-shaped invitation
+
+A specialist should know why it is allowed to read a source. The Workbench
+lets me select individual UTF-8 Markdown or text files from registered
+projects or explicitly allowed document roots. It records source versions
+and hashes, and retrieves bounded passages with line-level citations.
+
+There are two deliberate checks on inclusion: the profile and the workstream
+must both select the grant. Registering a document is not the same as sending
+it to every future task. Refreshing, revoking or detecting a changed source
+also cannot silently substitute new evidence inside an old native context.
+
+This is not whole-vault ingestion. It does not add PDF parsing, embeddings,
+a public index or access to personal conversations. The private vault
+connector is off by default. The useful first step is a small, inspectable
+set of documents, not the largest possible context window.
+
+The same principle applies to memory. A model can propose a lesson, but that
+lesson remains excluded until I approve its displayed version. It has an
+originating run and profile/workstream scope. I can edit, revoke or delete
+it, and an old queued task keeps its earlier snapshot.
+
+<figure class="not-prose my-10 lg:-mx-24">
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Moonbase reviewed memory loop diagram">
+<a href="/images/projects/moonbase-workbench-memory-loop-light.svg" class="block min-w-[761px]" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/moonbase-workbench-memory-loop-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/moonbase-workbench-memory-loop-light.svg" alt="A reviewed result can propose a scoped lesson. Pending or rejected lessons stay excluded. Only the displayed version that the owner approves and commits, with provenance, can enter the snapshot of a later explicit run." width="761" height="412" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+</div>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The order matters. A click that has not committed is not memory approval, and approving a lesson does not rewrite an already queued run. Scroll horizontally if needed, or open full size in <a href="/images/projects/moonbase-workbench-memory-loop-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">light</a> or <a href="/images/projects/moonbase-workbench-memory-loop-dark.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">dark</a>.</figcaption>
+</figure>
+
+This is what I mean by teaching a durable specialist in the current release:
+instructions, examples, selected evidence and reviewed lessons. It is not
+model-weight fine-tuning, and it is not an automatic guarantee that the
+specialist will be right.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/moonbase/workbench-engineering-profile-2026-10-13.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/moonbase/workbench-engineering-profile-2026-10-13.webp" alt="The actual generic Engineering profile editor shows purpose, instructions, style, completion rubric, examples and default scoped-tool choices. The project grant checkbox is unselected and no source grants are present." width="1362" height="1412" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The actual local generic Engineering profile editor on October 13: instructions, rubric, examples and default tool choices. The project checkbox is unselected. These defaults are not a task permission, an activated personal agent or fine-tuned weights. <a href="/images/moonbase/workbench-engineering-profile-2026-10-13.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/moonbase/workbench-knowledge-memory-2026-10-13.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/moonbase/workbench-knowledge-memory-2026-10-13.webp" alt="Actual Moonbase knowledge and memory panels have no registered sources or lessons. The source workstream is empty, docs/guide.md is only an unfilled path placeholder, no upload is selected, and the memory notice requires approval of a displayed lesson version." width="1362" height="759" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The actual local knowledge and memory panels on October 13, with no registered sources or lessons. <code>docs/guide.md</code> is a form placeholder, not an ingested document. Empty memory is not evidence that learning has already happened. <a href="/images/moonbase/workbench-knowledge-memory-2026-10-13.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+## Review is more than a thumbs-up
+
+The decision inbox separates exact tool permissions, semantic questions and
+outcome acceptance. Telling a specialist to try a different approach cannot
+approve a file write, network action or publication. An approval applies to
+one bound action, not every tool call that resembles it later.
+
+The outcome carries artifacts, changed-file hashes, a captured diff,
+verification receipts and the relevant source/session/profile provenance.
+Accepting it rechecks the actual workspace and artifact bytes. A passing
+whitespace check is not presented as a passing project test.
+
+Project verification also has a clear limit: it executes approved project
+code with a sanitized environment and private home directory. That is not
+an operating-system sandbox. Approving a check on untrusted project code
+still requires judgment.
+
+Moonbase itself does not gain a publish, push or merge tool in this release.
+Publishing this article is a separate, explicitly requested operation. That
+distinction keeps a useful coding interface from quietly becoming a general
+authorization layer.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/moonbase/workbench-decision-inbox-2026-10-13.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/moonbase/workbench-decision-inbox-2026-10-13.webp" alt="The actual Moonbase decision inbox explicitly has no pending decisions and distinguishes exact approve-once permissions, semantic questions and outcome review. It states that idle profiles do not run paid loops." width="1362" height="179" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The actual local decision inbox on October 13 is empty. Its permission/question/outcome distinction is visible without inventing approvals or model activity for the screenshot. <a href="/images/moonbase/workbench-decision-inbox-2026-10-13.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+## The new equipment belongs to the workflow
+
+The visual side grew with the working model. Three original Blender station
+types now represent the task console, knowledge archive and review station.
+Their authored screen mounts, interaction bounds and materials are part of
+the runtime asset contract, not decorative stand-ins.
+
+The Workbench uses their icons without waiting for GLB loading or a 3D scene.
+In the optional habitat, the stations can project current owned work,
+sources and decisions. Losing freshness produces an unavailable state;
+an animated console is not evidence that a model is running.
+
+The existing alien-dinosaur residents, real PTY workers, project floors,
+queues, meetings and whiteboard were not replaced by SDK-shaped imitations.
+Moonbase-owned SDK sessions produce structured events. An existing terminal
+worker still has its real terminal. A Neural Bridge specialist observed from
+another runtime is still read-only observation, not an adopted desktop chat.
+
+## Maintenance should not own every terminal on the Mac
+
+One operational problem exposed a broader design issue. The conservative
+maintenance observer originally rejected any unrelated terminal activity.
+That made an embedded shell in another application's process tree enough to
+block a Moonbase configuration operation.
+
+The answer is not a special exception for an application named Claude. Names,
+ownership and an apparently idle process are not proof that a resource is
+unrelated. The reviewed correction adds an explicit Moonbase operation scope:
+look for actual conflicts in owned lineage/groups, protected directories and
+files, PTY claims, controllers and sockets, while leaving unrelated terminals
+alone.
+
+The correction is merged and checked. An owned neutral terminal survived the
+guarded lifecycle in controlled tests, while the same terminal holding a
+protected directory or file caused refusal. Global/launchd/bootstrap
+observations in those tests are labeled synthetic rather than passed off as
+a live production maintenance demonstration.
+
+There is an important deployment boundary here. The scoped correction is
+merged source, not a newly installed helper or a new live-admission profile
+for the restarted application. Future scoped maintenance still needs that
+reviewed release/profile step. Normal Workbench use does not require unrelated
+Claude work to be stopped.
+
+## What is live, and what the evidence means
+
+The Workbench application and authenticated desktop/mobile layouts are live.
+The configuration update preserved all 570 protected file bytes and modes,
+including retained mission history, rather than resetting the workspace to
+make a rollout easier. The existing mission records and Ready mission were
+left intact.
+
+Separate isolated native checks exercised real Copilot artifacts, a file
+diff, outcome review and an approved-memory follow-up. Four submissions
+included one retained initial failure and three successful tasks. That is
+evidence for those specific workflows, not a production load test or a claim
+that the four template profiles have all been run.
+
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Current Workbench evidence and limits">
+
+| Area | Current boundary |
+|---|---|
+| Workbench and knowledge/review/profile UI | Deployed; actual local runtime screenshots, with no invented active jobs. |
+| GitHub Copilot adapter | Implemented and exercised in isolated native proof; production readiness is still unchecked. |
+| Claude Agent adapter | Implemented but blocked until permitted documented authentication is configured. A normal subscription login is not an authorization workaround. |
+| Usage | Provider-reported units and coverage, not a made-up credit/dollar conversion or hard spending guarantee. |
+| Scoped maintenance | Reviewed and merged source; future helper/profile release remains separate. |
+| Discord notifications | Transport exists; no owner webhook is configured, so no delivery is claimed. |
+
+</div>
+
+Those limits are part of the product, not fine print hiding behind the
+screenshots. The next useful step is explicitly binding a specialist to a
+project and choosing the evidence and checks it should use. It is not
+starting every profile merely to make the office look busy.
+
+The new goal is straightforward: a place to leave meaningful work, return
+with direction and retain what was actually learned. The lunar habitat gives
+that work a memorable home. The Workbench gives it a contract.
+
+## References
+
+- [Original Moonbase build](/posts/building-moonbase/), including the pinned
+  MIT-licensed [Agent Office foundation](https://github.com/AgentSystemLabs/agent-office/tree/44aecc1ecf175939bce2049123626aa2bcddd7e2).
+- [Moonbase project](/projects/moonbase/) and
+  [technical specification](/research/moonbase-workbench-technical-specification/).
+- [GitHub Copilot SDK](https://github.com/github/copilot-sdk) and its
+  [authentication documentation](https://github.com/github/copilot-sdk/blob/main/docs/auth/authenticate.md).
+- [Claude Agent SDK overview and authentication boundary](https://code.claude.com/docs/en/agent-sdk/overview).

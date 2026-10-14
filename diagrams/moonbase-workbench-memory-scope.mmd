@@ -1,0 +1,15 @@
+flowchart TB
+  accTitle: Moonbase scoped memory approval and revocation
+  accDescr: A proposed lesson carries origin and scope but remains excluded from future context. The owner reviews a displayed version, approval commits with a revision check, and only later explicit runs pin it. Revocation or deletion excludes it from later runs without rewriting earlier context.
+  Proposal["Proposed lesson with origin and scope"]
+  Excluded["Excluded from future context"]
+  Review["Owner edits or reviews displayed version"]
+  Commit["Approval commits with revision check"]
+  Snapshot["Later explicit run pins approved version"]
+  Revoke["Revoke or delete for later runs"]
+  Proposal --> Excluded
+  Proposal --> Review
+  Review --> Commit
+  Commit --> Snapshot
+  Commit --> Revoke
+  Revoke --> Excluded

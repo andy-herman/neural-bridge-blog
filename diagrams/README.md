@@ -60,6 +60,41 @@ adding a client-side Mermaid dependency. The wider figures have labeled,
 keyboard-focusable scroll regions on small screens so text does not shrink
 to an unreadable size.
 
+### Persistent Workbench figures
+
+The Workbench article uses `moonbase-workbench-flow.mmd` and
+`moonbase-workbench-memory-loop.mmd`. The technical specification uses
+`moonbase-workbench-architecture.mmd`,
+`moonbase-workbench-approval-sequence.mmd`, and
+`moonbase-workbench-memory-scope.mmd`. The current project hub reuses the
+architecture figure; the original article and its historical figures keep
+their existing URLs.
+
+These sources need no palette substitution. They include accessible titles
+and descriptions. Sequence labels use line breaks rendered as SVG text, not
+HTML labels. Render both themes with the same CLI and configs:
+
+```bash
+set -e
+for source in diagrams/moonbase-workbench-*.mmd; do
+  name="$(basename "$source" .mmd)"
+  for theme in light dark; do
+    npm exec --yes --package=@mermaid-js/mermaid-cli@12.0.0 -- mmdc \
+      --input "$source" \
+      --output "public/images/projects/${name}-${theme}.svg" \
+      --configFile "diagrams/theme-${theme}.json" \
+      --backgroundColor transparent \
+      --svgId "${name}-${theme}" \
+      --no-font-embed --quiet
+  done
+done
+xmllint --noout public/images/projects/moonbase-workbench-*.svg
+```
+
+Full-size light and dark links accompany each figure. Diagram scroll regions
+preserve readable native-size labels on narrow screens rather than shrinking
+the whole chart to the prose column.
+
 ## Layout notes
 
 - Mermaid ignores a subgraph's own `direction` once any node inside it links outside. To keep lanes horizontal, link the subgraphs themselves (`BUILD ==> QUERY`), not nodes across them.
