@@ -7,19 +7,19 @@ flowchart LR
     D4["Sep 28 to 29<br/>Temporal router,<br/>judges tested"]
     D5["Oct 1 to 2<br/>Run 011 baseline,<br/>scorer 2026-10-01.1"]
     D6["Oct 6 to 12<br/>Runs 012 and 012b,<br/>eval grown to 749"]
-    D1 --> D2 --> D3 --> D4 --> D5 --> D6
+    D7["Oct 12 to 13<br/>Runs 013 and 013b,<br/>Gemma 4 E4B adopted"]
+    D1 --> D2 --> D3 --> D4 --> D5 --> D6 --> D7
   end
   subgraph NEXT["NEXT"]
     direction TB
     N1["Audit 100 pairs,<br/>freeze eval v3"]
-    N2["Gemma 4 E4B<br/>against Gemma 3 4B"]
-    N3["Fix quote controls,<br/>replace the juror"]
-    N4["Retrieval: stemming,<br/>embedder trial,<br/>clean retrain"]
-    N5["Citation rule<br/>on its own"]
-    N6["Policy alignment<br/>prototype"]
-    N1 --> N2 --> N3 --> N4 --> N5 --> N6
+    N2["Fix quote controls,<br/>replace the juror"]
+    N3["Retrieval: stemming,<br/>embedder trial,<br/>clean retrain"]
+    N4["Name what replaced<br/>what: a prompt rule"]
+    N5["Policy alignment<br/>prototype"]
+    N1 --> N2 --> N3 --> N4 --> N5
   end
   DONE ==> NEXT
 
   classDef out stroke:{{ACCENT}},stroke-width:2px;
-  class D6,N1 out;
+  class D7,N1 out;
