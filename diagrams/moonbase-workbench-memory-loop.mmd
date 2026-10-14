@@ -1,0 +1,15 @@
+flowchart TB
+  accTitle: Moonbase reviewed memory loop
+  accDescr: A reviewed owned-run result can propose a scoped lesson. Pending or rejected lessons remain excluded. Only an owner-approved committed version and its provenance can enter the snapshot of a later explicit run; already queued runs retain their earlier context.
+  Result["Reviewed result from an owned run"]
+  Proposed["Proposed scoped lesson"]
+  Decision{{"Owner approves the displayed version?"}}
+  Excluded["Excluded from future task context"]
+  Committed["Committed approved version and provenance"]
+  Next["Next explicit run captures its own snapshot"]
+  Result --> Proposed
+  Proposed --> Decision
+  Decision -->|"No, or still pending"| Excluded
+  Decision -->|"Yes, committed"| Committed
+  Committed --> Next
+  Next -->|"New work and evidence"| Result

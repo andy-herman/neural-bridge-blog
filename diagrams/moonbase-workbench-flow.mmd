@@ -1,0 +1,21 @@
+flowchart TB
+  accTitle: Moonbase owner-directed work
+  accDescr: The owner directs a Workbench with pinned profiles, workstreams, sources and approved lessons. A server-owned supervisor starts an owned native SDK session. Exact approved actions reach a scoped project worktree, and actual artifacts and receipts return for owner review. Reconnecting observes current state rather than replaying actions.
+  Owner["Owner: task, direction and decisions"]
+  Work["Workbench: live receipts and review"]
+  Pins["Pinned profile, workstream, sources and approved lessons"]
+  Supervisor["Server-owned supervisor"]
+  SDK["Owned native SDK session"]
+  Project["Scoped project worktree and approved tools"]
+  Outcome["Artifacts, diff, checks and provenance"]
+  Review["Owner outcome review"]
+  Owner --> Work
+  Work --> Pins
+  Pins --> Supervisor
+  Supervisor --> SDK
+  SDK -->|"Exact approved actions"| Project
+  Project --> Outcome
+  SDK -->|"Structured messages and tool receipts"| Work
+  Outcome --> Review
+  Review -->|"Accept or request revision"| Work
+  Supervisor -->|"Current state, not action replay"| Work

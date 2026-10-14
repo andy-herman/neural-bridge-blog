@@ -1,0 +1,23 @@
+sequenceDiagram
+  accTitle: Moonbase exact-once approval and outcome review
+  accDescr: An explicit owner task is bound to current profile and workstream versions. The server checks grants, context and capacity before creating its native session. A requested tool action requires an exact one-use owner decision and a fresh authority check before execution. Actual artifacts and receipts are returned, and acceptance rechecks current workspace and artifact bytes.
+  participant Owner
+  participant Workbench
+  participant Server
+  participant Native as Owned native session
+  participant Project as Scoped workspace
+  Owner->>Workbench: Explicit task<br/>and consent
+  Workbench->>Server: Current profile/workstream<br/>versions
+  Server->>Server: Validate grants, pins<br/>and capacity
+  Server->>Native: Start owned run<br/>with bounded context
+  Native->>Server: Request a bound<br/>tool action
+  Server->>Workbench: Exact permission<br/>and action hash
+  Owner->>Workbench: Approve once<br/>or deny
+  Workbench->>Server: Bound decision<br/>and revision
+  Server->>Server: Recheck current authority<br/>and action
+  Server->>Project: Execute only the<br/>approved operation
+  Project->>Server: Actual result and<br/>file/check receipts
+  Server->>Workbench: Artifact, diff<br/>and outcome
+  Owner->>Workbench: Accept exact outcome<br/>or request revision
+  Workbench->>Server: Outcome decision
+  Server->>Server: Recheck current<br/>artifact/workspace bytes
