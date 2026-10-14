@@ -68,6 +68,8 @@ Gemma GRC는 제 책상 위 맥 미니에서 돌아가는 거버넌스·리스�
 - [When the Instrument Is the Bottleneck](/research/when-the-instrument-is-the-bottleneck): 모든 실험과 신뢰구간, 실패한 측정 도구까지 담은 전체 실험 보고서.
 - [The Law Moved in July. My Assistant Didn't.](/posts/the-law-moved-in-july): 공개 원문 라이브러리, 평가 세트, 그리고 2026년에 바뀐 사실을 잡아내는 카나리아 질문.
 - [Before I Fixed the Model, I Had to Fix the Grader](/posts/fixed-the-grader-first): 첫 전체 베이스라인, 채점기의 결함, 그리고 프롬프트 실험.
+- [Gemma 3 to Gemma 4: Same Library, Same Prompt, a Different Assistant](/posts/gemma-3-to-gemma-4): 모델을 바꾸자 무엇이 달라졌는지, 그리고 첫 실험이 넘지 못한 규칙.
+- [Gemma GRC: A Technical Specification](/research/gemma-grc-technical-specification): 모든 데이터 흐름, 평가 체계, 실험 결과를 담은 기준 문서.
 
 ## 다음 단계
 

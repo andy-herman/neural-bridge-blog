@@ -68,6 +68,8 @@ My first gate read private flags but not classification labels. A self-audit fou
 - [When the Instrument Is the Bottleneck](/research/when-the-instrument-is-the-bottleneck): the full lab write-up, with every run, its confidence interval and the instruments that failed.
 - [The Law Moved in July. My Assistant Didn't.](/posts/the-law-moved-in-july): the library of primary texts, the test set and the canaries for facts that changed in 2026.
 - [Before I Fixed the Model, I Had to Fix the Grader](/posts/fixed-the-grader-first): the first end-to-end baseline, the grader's faults and the prompt experiments.
+- [Gemma 3 to Gemma 4: Same Library, Same Prompt, a Different Assistant](/posts/gemma-3-to-gemma-4): what changed when the model did, and the rule the first run failed.
+- [Gemma GRC: A Technical Specification](/research/gemma-grc-technical-specification): the reference document, with every data flow, the evaluation stack and the run results.
 
 ## What's next
 

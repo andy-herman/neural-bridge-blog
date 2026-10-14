@@ -1,0 +1,132 @@
+---
+title: "Gemma 3 to Gemma 4: Same Library, Same Prompt, a Different Assistant"
+description: "Two prompt changes moved my compliance assistant's refusals by about three points. Swapping Gemma 3 4B for Gemma 4 E4B moved them by thirty-six. What changed between the models, what it looks like in the answers, and the rule the first run failed."
+pubDate: 2026-10-14
+project: gemma-grc
+tags: ["gemma-grc", "gemma", "evaluation", "rag", "local-ai", "grc", "compliance", "build-in-public"]
+draft: false
+---
+
+For a week I tried to talk my compliance assistant out of answering questions it could not answer. Two prompt changes, tested one rule at a time, moved its refusals by about three points, inside the noise.
+
+Then I changed the model. Same library, same prompt, same eight passages per question. Refusals went from 57% to 93%.
+
+## Two models, a year apart
+
+Gemma GRC runs on a Mac Mini with no network connection. A small open model answers only from a library of primary regulatory text and my own notes, and cites the passage behind each claim. Until this week that model was Gemma 3 4B. Now it is Gemma 4 E4B.
+
+| | Gemma 3 4B | Gemma 4 E4B |
+|---|---|---|
+| Released | 10 March 2025 | 31 March 2026 |
+| Parameters | 4 billion | About 4.5 billion effective, 8 billion in all |
+| License | Gemma Terms of Use | Apache 2.0 |
+| Context window | 128K tokens | 128K tokens |
+| The build I run | 4-bit, on Apple's MLX | Q4_K_M, on Ollama |
+| Thinking mode | None | On by default; I turn it off |
+
+The release dates are from Google's Gemma release log. Most coverage of Gemma 4 is dated 2 April.
+
+The "E" stands for effective. Gemma 4's small models give each layer its own small embedding for every token, which Google calls per-layer embeddings. Those tables are large but are only looked up, so Google counts about 4.5 billion effective parameters while the weights hold 8 billion.
+
+The license matters more than it looks. Gemma 3 came under Google's Gemma Terms of Use, which carry over to models built from it. Gemma 4 is Apache 2.0. For a tool I might one day hand to someone else, that is a real difference.
+
+## One change, and a rule written first
+
+The test was Run 013. Everything stayed as it was in the baseline, Run 011:
+- the same clean library of 6,304 passages;
+- the same prompt, retrieval and date router;
+- three answers per question at the same temperature;
+- the 589-question test set, plus eight canaries for facts that changed in 2026.
+
+Only the model changed, and with it the runtime, from MLX to Ollama, because that is how it would ship. I set Ollama's sampler to match MLX's, so the swap would not quietly change that too.
+
+Before it ran, I wrote down what would count as a win. Gemma 4 would replace Gemma 3 only if:
+- supported claims fell by no more than 2 points;
+- unsupported answers and wrong refusals each rose by no more than 2 points;
+- at least one of refusals, supported claims or citation precision clearly improved;
+- and answers took no more than twice as long.
+
+## What changed
+
+Paired question by question against Gemma 3, on the replication run described below:
+
+| | Gemma 3 4B | Gemma 4 E4B | Difference (95% interval) |
+|---|---|---|---|
+| Declines when the library has no answer | 57% | 93% | +36 points (30 to 41) |
+| Claims supported by a right passage | 82% | 95% | +12 points (9 to 15) |
+| Answers with an unsupported claim | 25% | 6% | -19 points (-23 to -16) |
+| Cited claims the cited passage supports | 63% | 95% | +32 points (28 to 36) |
+| Wrongly refuses, right passage shown | 1.0% | 2.0% | +0.9 points (-0.4 to +2.5) |
+| Canaries passed | 20 of 24 | 19 of 24 | |
+| Median seconds per answerable question | 12.0 | 5.3 | |
+
+A week of prompt work moved refusals by about three points. The model moved them by thirty-six. Numbers like these are easy to state and hard to picture, so here is what they look like in the answers.
+
+### It says what is missing
+
+Nothing in the library answers this one. Asked what the MAS technology risk management guidelines require, Gemma 3 answered anyway:
+
+> Based on the provided context, here's a breakdown of the key components of technology risk management guidelines that Singapore's MAS requires financial institutions to implement:
+
+Seven bullets followed, each with a citation. Every one came from DORA or the US model risk guidance. None came from MAS, and the answer never said so.
+
+Gemma 4, shown the same eight passages:
+
+> The provided context does not contain the key components that technology risk management guidelines issued by Singapore's MAS require financial institutions to implement. You would need a document detailing MAS guidelines for this information.
+
+That is the behavior my prompt has asked for since the start. Gemma 3 followed it about half the time. Gemma 4 follows it.
+
+### Its citations point at what it read
+
+Each prompt numbers its passages one to eight. Gemma 3 often copied reference markers out of the source text. An answer about the Cyber Resilience Act opened with "[1], [2], [10]", and there is no passage 10. 8% of Gemma 3's answers carried a bracketed number that was not a passage it was shown. Gemma 4 does it in fewer than 1%, and 95% of its cited claims are supported by the passage they cite, against 63%.
+
+### It is faster
+
+On the same Mac, with the same passages, the median answer to an answerable question takes 5.3 seconds, against 12.0. I expected the newer model to be slower and wrote that down as a prediction. I was wrong, in the direction I prefer.
+
+## The rule it failed first
+
+The first run did not pass. Everything above improved, but wrong refusals, meaning answerable questions it declined, rose 2.7 points, over my 2-point limit. By the rule I had written, Gemma 4 was not adopted.
+
+So I read the refusals. Gemma 3's few refusals were mostly answers that ended by saying the context does not specify some detail. Gemma 4's were real refusals, and seven of those questions had something in common: search had never put the right passage in front of the model.
+
+One asked what NIST SP 800-218 requires to keep gathered information to authorized personnel. Search returned eight controls from SP 800-53 and SP 800-171, and none from SP 800-218. Gemma 3 answered from a control about classified information. Gemma 4 said it would need the SP 800-218 document. Across those seven questions, Gemma 3 answered every time. Gemma 4 declined 16 times out of 21.
+
+Declining there is correct. The metric counted it as wrong, because it counted every refusal on an answerable question, whether or not the answer was in the prompt.
+
+I could see the fix, and I could also see the trap. Changing a rule after you see it block the result you want is exactly how a lab talks itself into anything. So I did it in order:
+1. I wrote the new definition down first: a refusal is wrong only when the right passage was shown.
+2. I converted the stored scores to it, without judging anything again.
+3. I ran Gemma 4 again with fresh random samples, as Run 013b, and let that run alone decide.
+
+It passed every criterion, and it agreed with the first run to within a point on every measure.
+
+One more check came afterwards. Gemma 4 was also one of the two models that graded relevance when I built the test set, so it helped decide which questions count as unanswerable. On the 52 unanswerable questions where a second judge confirmed every grade, it still declines 94%, against Gemma 3's 71%. Its own vote does not explain the gain. I am replacing it as a judge anyway.
+
+## Where Gemma 4 is worse
+
+Two canaries got worse, and both are about naming the current thing.
+
+- **SR 11-7.** Asked whether SR 11-7 is still the Federal Reserve's model risk guidance, Gemma 4 correctly says no. But in about half its answers it says it was replaced by "the revised guidance", without naming SR 26-2, which is in the passage it cites. Gemma 3 named it in all three of its answers.
+- **The AI Act fines.** Asked when the Commission can start fining general-purpose AI providers, it gets the cap right, 3% of turnover or EUR 15 million, and then says the date is not given. The date, 2 August 2026, has to be worked out from an exception in Article 113. Gemma 3 got it in one answer of three; Gemma 4 in none.
+
+The first looked like a prompt problem, so I tested one sentence added to the rule about superseded texts: whenever you say something was replaced, name what replaced it and when. I wrote the bar first: at least four more correct answers out of ten.
+
+It did nothing. SR 26-2 was named in 5 of 10 answers without the sentence and 4 of 10 with it. Reading them showed why. The model did name what replaced SR 11-7: "the revised guidance on model risk management issued by the Board of Governors of the Federal Reserve System, the OCC and the FDIC". That is the wording of the sentence in the SR 26-2 letter that does the replacing. The number is in the passage four times, in its label and letterhead, but not in that sentence. By the model's reading, it followed my rule. My rule never said to use the identifier.
+
+The fines date is a reading problem, and the sentence did not touch it either: no correct answers out of ten, with it or without it.
+
+## What I take from it
+
+- **For grounded answers, the model generation mattered more than my prompt wording.** A week of wording moved refusals by three points. The newer small model moved them by thirty-six, with no prompt change at all.
+- **A better model can expose a wrong metric.** Gemma 3 answered regardless, so my wrong-refusal metric never had to ask whether the answer was in the prompt. Gemma 4 made it ask.
+- **Write the rule first, and if it is wrong, fix it before the run that counts.** That cost me a day. It also means the decision rests on a run nobody had seen.
+- **A rule has to say what counts.** "Name what replaced it" was satisfied by a description. If I want the number, the rule, or the library, has to ask for the number.
+- **Retrieval is now the bottleneck.** When search misses, Gemma 4 declines instead of guessing. That is the right way to fail, but it is still a failure, so better search is next.
+
+Some caveats:
+- The test set stays a draft until I finish auditing 100 of its grades.
+- The runtime changed along with the model.
+- This is one machine, with one user.
+
+The full numbers are in the [technical specification](/research/gemma-grc-technical-specification). Gemma 4 E4B has been the default since 13 October.

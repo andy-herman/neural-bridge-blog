@@ -2,12 +2,12 @@
 title: "Gemma GRC: A Technical Specification"
 description: "How a small local model answers compliance questions from a governed library of primary regulatory texts: the data flows, the corpus rules, retrieval, generation, the evaluation and judging stack, what it is for, and what comes next."
 abstract: "Gemma GRC is a governance, risk and compliance assistant that runs on a Mac Mini with no network connection. A small open model answers only from a governed library, 5,989 passages of primary regulatory text from 58 official sources plus my own notes, and cites the passage behind every claim. This specification describes the system as it stood on 13 October 2026: the build-time data flows that fetch, parse, gate and label the library; the query path, including hybrid retrieval and a router for questions about when rules apply; the boundary that lets my agents search the library without seeing restricted text; and the evaluation stack, a 749-question test set scored by judges that were tested before they were trusted. The first end-to-end baseline, Run 011, showed what the library is worth: with Gemma 3 4B, the share of claims supported by a right passage rose from 23% answering from memory to 82%. Its weakest behavior was answering questions the library cannot, and two prompt changes did not fix it. A new generator did. In a replication judged by a rule written before it ran, Gemma 4 E4B declined 93% of those questions, against 57%, and 95% of its claims were supported by a right passage. It ends with what the system is for, where it fails, and the next pieces of work."
-pubDate: 2026-10-19
+pubDate: 2026-10-14
 topic: development-playbooks
 tags: ["gemma-grc", "rag", "local-ai", "evaluation", "llm-as-judge", "ai-governance", "grc", "build-in-public"]
 status: working-paper
 version: "v1.3"
-draft: true
+draft: false
 ---
 
 This is the reference document for Gemma GRC: what each part does, how data moves between the parts, and the evidence behind each design choice. The story of how it got here is in [It Learned How I Sound, Not What I Know](/posts/it-learned-how-i-sound), [The Law Moved in July](/posts/the-law-moved-in-july) and [Before I Fixed the Model, I Had to Fix the Grader](/posts/fixed-the-grader-first). The run-by-run lab record is in [When the Instrument Is the Bottleneck](/research/when-the-instrument-is-the-bottleneck). This document is versioned, and when a number changes, the version changes with it.
