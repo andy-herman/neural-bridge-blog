@@ -1,0 +1,26 @@
+flowchart TB
+  accTitle: Moonbase Mac mini AI Command Deck architecture
+  accDescr: Authenticated browser requests pass through Cloudflare Access and the Moonbase Airlock session guard to reach the Mac mini Node service. The Mac Mirror controller captures GitHub Copilot, Claude Desktop, and the full Mac mini display; the Photo Frame service streams slides from local or uploaded folders; and the Live Session Watcher tails local JSONL logs to drive downstairs mini dinosaur workers.
+  Browser["Remote Browser: 3D Command Deck + HUD"]
+  Auth["Cloudflare Access + Moonbase Session Guard"]
+  Server["Mac mini Node Service (127.0.0.1:47831)"]
+  MirrorAPI["MacMirrorController (/api/mac-mirror)"]
+  PhotoAPI["PhotoFrameService (/api/photo-frame)"]
+  SessionAPI["LiveSessionWatcher (/api/live-sessions)"]
+  HostApps["Mac mini: Copilot.app, Claude.app, Display & Photos"]
+  HostLogs["Mac mini: ~/.copilot & ~/.claude JSONL Streams"]
+  Upstairs["Upstairs Loft: 1st-Person Paws, Dual Monitors & Wall Mirror"]
+  Downstairs["Downstairs Floor: Mini Dinosaur Workers (Desks 0..5)"]
+
+  Browser --> Auth
+  Auth --> Server
+  Server --> MirrorAPI
+  Server --> PhotoAPI
+  Server --> SessionAPI
+  MirrorAPI <-->|"CGWindow + input"| HostApps
+  PhotoAPI -->|"Validated slides"| HostApps
+  SessionAPI -->|"64 KB JSONL tail"| HostLogs
+  HostApps --> Upstairs
+  HostLogs --> Downstairs
+  Upstairs --> Browser
+  Downstairs --> Browser
