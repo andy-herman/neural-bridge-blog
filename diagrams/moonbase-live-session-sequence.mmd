@@ -1,0 +1,15 @@
+sequenceDiagram
+  accTitle: Non-intrusive live session discovery and desk projection
+  accDescr: LiveSessionWatcher scans ~/.copilot/session-state and ~/.claude/projects, parses the tail of each JSONL event log, classifies session activity into working, waiting, or idle, and assigns up to six active sessions to downstairs mini dinosaur workers.
+  participant FS as Local macOS Filesystem
+  participant Watcher as LiveSessionWatcher
+  participant API as GET /api/live-sessions
+  participant Scene as Three.js Office + Dinosaurs
+
+  Watcher->>FS: Scan ~/.copilot/session-state/*<br/>and ~/.claude/projects/*
+  FS-->>Watcher: File mtime + final 64 KB<br/>JSONL event tail
+  Watcher->>Watcher: Classify status (working <=90s,<br/>waiting on ask_user, idle <=15m)
+  Watcher->>Watcher: Sort by priority + updatedAt<br/>and assign deskIndex 0..5
+  Scene->>API: Poll /api/live-sessions (10s)
+  API-->>Scene: Return sessions[] + summary
+  Scene->>Scene: Bind Mini Dinosaurs to Desks 0..5<br/>and update Command Deck pills

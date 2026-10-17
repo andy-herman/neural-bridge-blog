@@ -95,6 +95,30 @@ Full-size light and dark links accompany each figure. Diagram scroll regions
 preserve readable native-size labels on narrow screens rather than shrinking
 the whole chart to the prose column.
 
+### Command Deck figures
+
+The October 17 Command Deck redesign article (`moonbase-back-to-the-drawing-board.mdx`),
+technical specification (`moonbase-mac-mini-command-deck-architecture.mdx`), and
+updated Moonbase project hub (`moonbase.md`) use
+`moonbase-command-deck-architecture.mmd` and
+`moonbase-live-session-sequence.mmd`. Render both themes with:
+
+```bash
+set -e
+for name in moonbase-command-deck-architecture moonbase-live-session-sequence; do
+  for theme in light dark; do
+    npm exec --yes --package=@mermaid-js/mermaid-cli@12.0.0 -- mmdc \
+      --input "diagrams/${name}.mmd" \
+      --output "public/images/projects/${name}-${theme}.svg" \
+      --configFile "diagrams/theme-${theme}.json" \
+      --backgroundColor transparent \
+      --svgId "${name}-${theme}" \
+      --no-font-embed --quiet
+  done
+done
+xmllint --noout public/images/projects/moonbase-command-deck-*.svg public/images/projects/moonbase-live-session-*.svg
+```
+
 ## Layout notes
 
 - Mermaid ignores a subgraph's own `direction` once any node inside it links outside. To keep lanes horizontal, link the subgraphs themselves (`BUILD ==> QUERY`), not nodes across them.
