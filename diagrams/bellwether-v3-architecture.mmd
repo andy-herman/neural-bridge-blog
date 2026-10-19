@@ -1,0 +1,24 @@
+flowchart TB
+  accTitle: Bellwether v3.0 closed-loop regulatory engagement architecture
+  accDescr: Canonical facts and source lineage in the Data Hub feed the multi-question engagement workbench and the cross-family staleness guardrail. Role-routed models draft and verify responses across DORA, UK CTP, NIS2, and the Korea Network Act, while human-confirmed answers promote back into the vector library with Evidence Ring watermarks and Route D privilege locks.
+  DataHub["1. Data Hub Semantic Layer: Canonical Facts, Lineage & Conflict Scanner"]
+  Corpus["ChromaDB Vector Store + Local ONNX MiniLM Embeddings (LRU Cached)"]
+  Intake["2. Multi-Question Engagement Workbench: CSV/JSON Pack + Entity Scope"]
+  Triage{{"4-Route Triage + Incident Path Gate (Routes A, B, C, D)"}}
+  Guardrail{{"3. Fail-Closed Temporal Staleness Guardrail (Age Gate + Cross-Family Judge)"}}
+  RoleRouter["Multi-Model Role Router: Gemini 4 Argon / Claude 5.5 + Prompt Cache"]
+  Repair["Inline Claim Repair Editor + 19-Regulator Sufficiency Panel"]
+  Promote{{"4. Universal Library Promotion: Ring 1/2/3 Watermark + Route D Lock"}}
+  Export["Regulator Submission Package + W3C PROV-JSON Evidence Appendix"]
+
+  DataHub -->|"Golden facts + conflict alerts"| Guardrail
+  Corpus -->|"Regime-isolated retrieval"| Intake
+  Intake --> Triage
+  Triage -->|"Routes A, B, C"| Guardrail
+  Triage -->|"Route D (Privilege Locked)"| Export
+  Guardrail --> RoleRouter
+  RoleRouter --> Repair
+  Repair --> Promote
+  Promote -->|"Compounds rfi_response_library"| Corpus
+  Promote -->|"Updated fact invalidates stale entries"| DataHub
+  Repair --> Export

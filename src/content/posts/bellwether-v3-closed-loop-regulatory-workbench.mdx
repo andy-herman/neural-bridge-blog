@@ -1,0 +1,233 @@
+---
+title: "Bellwether v3.0: From Single-Question RFI Triage to a Closed-Loop Regulatory Workbench"
+description: "How a full architecture audit, a User vs. Admin UX split, Gemini 4 Argon role routing, procedural 3D Blender emblems, and a three-phase product roadmap turned Bellwether into a closed-loop regulatory engagement system across DORA, UK CTP, NIS2, and the Korea Network Act."
+pubDate: 2026-10-19
+project: bellwether
+tags: ["bellwether", "neural-bridge", "regulatory-ai", "guardrails", "data-hub", "product-design", "blender", "build-in-public"]
+draft: false
+---
+
+When I first published [Don't answer the regulator from a blank page](/posts/rfi-reuse-temporal-guardrails/), [Bellwether](/projects/bellwether/) solved one specific, high-risk problem: matching an incoming supervisory Request for Information (RFI) against a library of previously approved answers, then running a fail-closed temporal staleness guardrail on an independent model family before a human reviewer could approve reuse.
+
+The core math held up well. Across the 69-case GShoe staleness regression suite (clean, adversarial, and borderline sets), the guardrail caught 97.2% of stale claims at a 3.1% false-fresh rate and 94.6% flag precision. Alongside it, I had designed an 18-case independence-discounted trust model (`src/data_hub/trust.py`) so that three internal systems syncing from the same upstream HRIS or CMDB record would count as one observation rather than three independent witnesses.
+
+Yet when I stepped back this week to run a full information-systems audit of Bellwether and use it against realistic multi-regime workloads, five structural problems stood out immediately:
+
+1. **Identity drift with its sibling project:** Bellwether still carried leftover artifacts from an earlier fork, including a 4,519-line Phaser pixel office and marketing-brochure page headers (`168px` stock-photo banners) that pushed the actual compliance tools below the fold.
+2. **Token and latency waste:** Every pipeline call defaulted to the primary authoring model unless manually overridden, repeated ONNX MiniLM-L6-v2 embeddings were recomputed on every stage, and `EXACT` library matches that had already cleared the independent staleness judge were running a redundant second LLM freshness pass.
+3. **Single-question demo vs. 40-question engagement reality:** Real supervisory inquiries from the Bank of England, the European Banking Authority, or South Korea's MSIT and KISA do not arrive one sentence at a time. They arrive as 20-to-50 question spreadsheets requiring entity scoping, live incident-path screening, four-route triage, owner assignment, inline claim repair, and an auditable export package.
+4. **An orphaned Data Hub and broken write-back loop:** The independence-discounted trust math in `src/data_hub/trust.py` had zero imports in the FastAPI server or the staleness guardrail. Meanwhile, narratives drafted in `/narrative` and `/drafting` had no button to promote approved answers back into `rfi_response_library`.
+5. **Three-framework hardcoding:** Adding a fourth regime, specifically South Korea's Act on Promotion of Information and Communications Network Utilization and Information Protection (**Korea Network Act**), exposed hardcoded `["DORA", "UK_CTP", "NIS2"]` arrays across the narrative, voice drafting, control mapping, and history workbenches.
+
+This post walks through the full system audit, the token and speed optimizations, the UX overhaul into dedicated User and Admin views, the procedural 3D Blender regulation emblems, and the three-phase product roadmap we executed to ship **Bellwether v3.0**.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/bellwether/bellwether-v3-workbench-launchpad-2026-10-19.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/bellwether/bellwether-v3-workbench-launchpad-2026-10-19.webp" alt="Bellwether v3.0 tool-first workbench launchpad showing the above-the-fold RFI Reuse and Staleness Guardrail console across UK CTP, DORA, NIS2, and the Korea Network Act, paired with User View and Admin View launchers and the 3D Blender assay monolith." width="1440" height="900" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The rebuilt Bellwether v3.0 launchpad. The marketing brochure is replaced by an above-the-fold RFI Reuse and Staleness Guardrail console covering UK CTP, DORA, NIS2, and the Korea Network Act, direct launchers for the Analyst Workbench (User View) and Platform Control Plane (Admin View), and live multi-model telemetry. <a href="/images/bellwether/bellwether-v3-workbench-launchpad-2026-10-19.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+---
+
+## Part 1: The Information System Audit and Token Efficiency Overhaul
+
+### Drawing a Hard Line Between Bellwether and Touchstone
+
+The first step of the audit was clarifying what Bellwether is and what it is not. My sibling project, **Touchstone**, is an adversarial multi-regulator examination simulator built around a desktop arena. **Bellwether** is the **Regulatory RFI Reuse, Fail-Closed Temporal Staleness Guardrail, Semantic Data Hub, and Supervisory Submission Workbench** for Critical Third Party Providers (CTPPs).
+
+In Bellwether, regulator personas (now 19 authorities across DORA, UK CTP, NIS2, and the Korea Network Act, plus a Chief Compliance Officer synthesizer) exist strictly as a post-reuse sufficiency rubric and statutory crosswalk check. Removing every leftover Phaser pixel-office bundle and legacy reference stripped thousands of lines of dead weight and focused the interface on evidence-grounded work.
+
+### Multi-Model Role Routing, Gemini 4 Argon, and Latency Tuning
+
+Auditing the LLM call graph revealed that mechanical tasks (document classification, RSS feed filtering, chunk titling, and horizon scans) were sharing the same flagship model configuration as long-form regulatory authoring. Worse, when our primary Cloud Run region (`us-east5`) hit a zero-quota ceiling on Vertex partner models, background refreshes failed unless the provider stack could route cleanly across model families.
+
+We rebuilt `config/models.json` and `src/models/config.py` around explicit pipeline roles (`AIConfig.for_role(role)`) and connected Bellwether to **Gemini 4 Argon (`google/gemini-4-argon`)** on Vertex AI's global OpenAI-compatible endpoint alongside **Claude 5.5 (`claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`)** on the direct Anthropic API:
+
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Bellwether v3.0 multi-model role routing and token optimizations">
+
+| Pipeline Role | Responsibility | Vertex AI Global Stack (`argon_vertex`) | Anthropic Direct Stack (`claude_5_5_anthropic`) | Why It Matters |
+|---|---|---|---|---|
+| `author` | Regulator-facing prose, partial/fresh RFI assembly, narrative rewrite | `gemini-4-argon` | `claude-opus-5-5` | Reserves frontier reasoning for substantive legal and technical drafting. |
+| `judge` | Cross-family staleness re-grounding & answer quality verification | `gemini-2.5-pro` | `gemini-2.5-pro` | Enforces `independence_ok()` so no model family ever grades its own freshness. |
+| `eval` | 19-persona sufficiency scoring, CCO synthesis, anchor critiques | `gemini-3.1-pro-preview` | `claude-sonnet-5-5` | High-throughput parallel rubric evaluation across 19 supervisory charters. |
+| `fast` | Corpus classification, chunk titling, RSS filtering, non-escalated checks | `gemini-3.8-flash` | `claude-haiku-5-5` | Cuts cost and latency by 80%+ on high-volume mechanical classification. |
+| `scan` | NIS2 transposition refresh & regulatory horizon delta extraction | `gemini-3.8-flash` | `claude-sonnet-5-5` | Fast structured JSON extraction over 30 EU/EEA jurisdictions. |
+
+</div>
+
+Alongside role routing, we shipped five concrete speed and token optimizations:
+
+1. **Ephemeral Prompt Caching (`BELLWETHER_PROMPT_CACHE=1`):** System prompts of `1,024` characters or more (such as the 35-principle voice charter and 19 regulator charters) automatically attach `cache_control: {"type": "ephemeral"}` inside `_CompletionsShim._build_kwargs()`, cutting repeated input token costs by up to 90%.
+2. **Single-Pass `EXACT` Reuse Deduplication:** In `src/rfi_reuse/router.py` (`_exact()`), when the temporal staleness guardrail escalates to the independent judge and confirms zero stale claims (`verdict.reusable is True and verdict.escalated is True and not verdict.check_failed`), the router now skips a duplicate second LLM freshness pass, cutting `EXACT` match LLM calls in half while preserving fail-closed behavior.
+3. **In-Memory ONNX Embedding LRU Cache:** `EmbeddingClient` in `src/corpus/embeddings.py` now caches the 512 most recent 384-dim `all-MiniLM-L6-v2` query embeddings in memory so repeated lookups of the same RFI question across routing, staleness checking, and corpus retrieval execute in under `0.01ms`.
+4. **Vertex Gemini Thinking-Token Budget Tuning:** Benchmarking Vertex AI's OpenAI-compatible Gemini endpoint revealed that Gemini 3.x and 4.x count internal thinking tokens against `max_tokens` and default to high thinking latency (`~21s`). Setting `reasoning_effort="low"` by default with `+1,024` thinking-token headroom reduced structured JSON completion latency from `21.68s` to `1.24s` on `gemini-3.8-flash` and `2.35s` on `gemini-4-argon` while preventing mid-JSON truncation.
+5. **1-Click Runtime Model Stack & Firm Profile Switchers:** The Admin Console (`/admin`) now exposes live token, cache-hit, and latency telemetry per role (`GET /api/models`) and lets operators switch between the **Gemini 4 Argon**, **Claude 5.5**, and **Gemini 3.1 Pro** stacks or switch the active CTPP firm profile (`POST /api/firm`) at runtime without redeploying.
+
+---
+
+## Part 2: UX Redesign, User vs. Admin Split, and 3D Blender Regulation Emblems
+
+### Designing for Daily Use Instead of Brochure Scroll
+
+A compliance workbench should feel like an instrument panel, not a marketing site. We ran a dedicated UX interaction audit across all 16 user workflows (`UxFunctionMap.tsx`, embedded interactively on `/` and `/admin`) and restructured the application into two explicit modes switchable from the persistent top header and sidebar:
+
+- **User View (`Workspace` Mode):** Built for regulatory counsel, Local CISOs, and GRC analysts. Houses the **Analyst Workbench (`/workspace`)**, **Regime Hubs (`/dora`, `/uk-ctp`, `/nis2`, `/f/korea_network_act`)**, **6-Stage Narrative Engine (`/narrative`)**, **Firm Voice Drafter (`/drafting`)**, **Scope & Control Matrix (`/mapping`)**, and **Verified Ledger (`/history`)**.
+- **Admin View (`Admin` Mode):** Built for platform engineers, knowledge curators, and calibration owners. Houses the **Admin Console (`/admin`)**, **Staleness & Data Hub Trust Calibration (`/rfi-calibration`)**, **Corpus & Contradiction Scanner (`/corpus`, `/corpus/curation`)**, **Regulator Charter & Feed Training Room (`/regulators`, `/training`)**, and **4-Step Dynamic Regulation Onboarding Wizard (`/onboard`)**.
+
+We also replaced the `168px` stock-photo `PageHeader` banners across every internal route with a compact `py-3.5 px-6` workbench toolbar, surfacing breadcrumbs, status badges, and action buttons while reclaiming vertical viewport space for data tables and editors.
+
+### Replacing Circular "Seal" Medallions with Procedural 3D Blender Sculptures
+
+Previously, the three built-in regimes used circular navy seal medallions (`rounded-full`) while dynamically onboarded regimes fell back to a generic flat Lucide `Landmark` icon. Seal medallions looked dated and visually flattened every framework into the same circle.
+
+We wrote a headless **Blender 5.2 LTS** procedural studio script (`scripts/render_regulation_icons.py`) using Cycles with Apple Metal GPU hardware raytracing, OpenImageDenoise, studio area lighting, and transparent RGBA film (`film_transparent=True`) to render bespoke 3D architectural emblems for every regime:
+
+- **DORA (`fw-dora.png`):** Interlocking cobalt glass and brushed gold hexagonal resilience shield.
+- **UK CTP (`fw-ukctp.png`):** Crimson glass and platinum 3-pillar systemic stability triad representing joint BoE, PRA, and FCA oversight.
+- **NIS2 (`fw-nis2.png`):** Emerald glass geodesic cyber-mesh node sphere with gold interconnects.
+- **Korea Network Act (`fw-korea-network-act.png`):** Cyan and crimson interlocking sovereign gateway torus and dual-core governance monolith.
+- **EU AI Act (`fw-eu-ai-act.png`):** Violet glass neural polyhedron suspended inside precision orbital rings.
+- **EU Cyber Resilience Act (`fw-cra.png`):** Amber and gunmetal hardware microchip fortress with a verification core.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/bellwether/blender-3d-regulation-icons-2026-10-19.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/bellwether/blender-3d-regulation-icons-2026-10-19.webp" alt="Six procedural 3D Blender Cycles architectural emblems rendered with transparent RGBA backgrounds for DORA, UK CTP, NIS2, the Korea Network Act, the EU AI Act, and the Cyber Resilience Act." width="1440" height="560" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">Bespoke 3D architectural regulation emblems rendered in headless Blender 5.2 LTS (Cycles Metal GPU + OpenImageDenoise, transparent RGBA). Removing the circular seal clipping in <code>FrameworkEmblem.tsx</code> lets each sculpture's silhouette anchor the sidebar, headers, and regime cards. <a href="/images/bellwether/blender-3d-regulation-icons-2026-10-19.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+---
+
+## Part 3: Senior PM Product Review and the Three-Phase v3.0 Roadmap
+
+With the foundation cleaned up, we ran a Principal Product & Program Manager review (`senior-pm-product-strategist`) comparing Bellwether's codebase against the actual day-to-day mechanics of running multi-jurisdictional regulatory engagements.
+
+### Where the Loop Broke in v2.1
+
+The PM review identified five "last-mile workflow gaps" that prevented Bellwether from acting as a closed-loop system of record:
+
+1. **Gap 1 - Stateless Single-Question Triage vs. Multi-Question Engagement Packs:** Analysts could paste one question at a time, but could not upload a 30-question regulator questionnaire, classify items into governance routes (`Route A/B/C/D`), flag live incident-reporting triggers, assign owners, and export a complete package with W3C PROV lineage.
+2. **Gap 2 - Broken Write-Back ("Promote to Library") Loop:** Drafts finished in `/narrative` and `/drafting` had no path back into `rfi_response_library`, and `RfiReusePanel.tsx` rendered reused answers as read-only text so a reviewer could not repair a single stale metric inline before approving.
+3. **Gap 3 - Orphaned Data Hub & Silent Corpus Contradictions:** `src/data_hub/trust.py` was unwired to the API and UI, and contradictory documents inside the corpus (such as a June 2026 brief stating no UK CTP had been designated alongside the July 2026 SI 2026/777 designation brief) were never surfaced as active conflicts.
+4. **Gap 4 - Second-Class Dynamic Regimes (`KOREA_NETWORK_ACT`, `EU_AI_ACT`, `CRA`):** Newly onboarded regulations were missing from the framework selectors in `/narrative`, `/drafting`, `/mapping`, and `/history`, and the Korea Network Act hub lacked its statutory Article 45-3 Local Security Committee and subsidiary-separation workflows.
+5. **Gap 5 - Single-Regime Silos for Cross-Regime Obligations:** Updating a canonical fact (like Tier-1 RTO or CISO identity) did not automatically flag dependent RFI answers across other regimes, and analysts had no side-by-side matrix comparing incident reporting clocks across DORA (4h), UK CTP (immediate), NIS2 (24h), and the Korea Network Act (24h KISA + 72h PIPC).
+
+<figure class="not-prose my-10 lg:-mx-24">
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Bellwether v3.0 closed-loop architecture diagram">
+<a href="/images/projects/bellwether-v3-architecture-light.svg" class="block min-w-[960px]" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/bellwether-v3-architecture-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/bellwether-v3-architecture-light.svg" alt="Bellwether v3.0 closed-loop architecture. Canonical facts and source lineage in the Data Hub feed the multi-question engagement workbench and the cross-family staleness guardrail. Role-routed models draft and verify responses across DORA, UK CTP, NIS2, and the Korea Network Act, while human-confirmed answers promote back into the vector library with Evidence Ring watermarks and Route D privilege locks." width="960" height="720" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+</div>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">Bellwether v3.0 closed-loop architecture across all four pillars: the Data Hub Semantic Layer grounds the Fail-Closed Staleness Guardrail, the Multi-Question Engagement Workbench triages questionnaires across Routes A/B/C/D, and Universal Library Promotion compounds verified answers while blocking privileged Route D deliberations. Open full size in <a href="/images/projects/bellwether-v3-architecture-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">light</a> or <a href="/images/projects/bellwether-v3-architecture-dark.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">dark</a>.</figcaption>
+</figure>
+
+### The Explicit Anti-Roadmap (What We Chose Not to Build)
+
+Equally important was defining what Bellwether must **not** build:
+
+- **No theatrical 2D/3D offices or free-form regulator debates:** That is Touchstone's domain.
+- **No live read/write ETL into production HRIS (Workday) or CMDB (ServiceNow) databases:** Direct HRIS/CMDB connectors create unnecessary PII and data-residency blast radius; Bellwether ingests schema-contracted read-only snapshots with `derived_from` lineage metadata.
+- **No silent auto-regeneration or auto-submission of stale answers:** Regenerated text always lands in a human diff-and-confirm editor (`confirmed_accurate: true`).
+- **No indexing of Route D (Privileged Legal / CELA) deliberations into the shared vector store:** Questions involving statutory scope disputes, administrative fines, or enforcement exposure are privilege-locked (`422` on `/api/rfi-reuse/library/add`) and logged as metadata-only.
+
+### The Phased Build Plan (RICE Prioritized)
+
+We organized the six feature bets into three sequential phases and built all three end-to-end:
+
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Bellwether v3.0 RICE-ranked feature roadmap across Phases 1, 2, and 3">
+
+| Phase | Feature Bet | RICE | Key Backend & Frontend Deliverables |
+|---|---|---:|---|
+| **Phase 1A** | **Dynamic Framework Propagation** | **79** | Extended `src/narrative/catalogue.py`, `harmonizer.py`, and `src/mss.py` with full Korea Network Act domains, anchor regulators (`MSIT`, `KISA`, `KCC_PIPC`), and obligation catalogues; wired `useFrameworks()` across `NarrativePage`, `DraftingPage`, `MappingPage`, and `HistoryPage`. |
+| **Phase 1B** | **Inline Claim Repair & Universal Library Promotion** | **92** | Added inline markdown editing and 1-click regenerated draft application to `RfiReusePanel.tsx`; built `PromoteToLibraryCard.tsx` across Narrative and Voice Drafting with **Evidence Ring (`Ring 1/2/3`) watermarks**, volatility TTLs, entity scope, and the **Route D Privilege Lock**. |
+| **Phase 1C** | **Data Hub Semantic Layer & Corpus Conflict Scanner** | **85** | Built `src/data_hub/conflicts.py`, `src/server/data_hub_routes.py`, and `DataHubExplorer.tsx` on `/rfi-calibration` and `/corpus`; wired `staleness.py` (`_source_of_truth`) to inject canonical golden facts into the cross-family judge; linked fact updates to automatic `ResponseLibrary.flag_stale()` invalidation. |
+| **Phase 2A** | **Multi-Question Engagement & 4-Route Triage Workbench** | **88** | Built `src/rfi_reuse/engagement.py` and `RfiEngagementWorkbench.tsx` on every regime hub (`?tab=engagement`), supporting multi-question packs, CSV/JSON upload, **Incident Path** alerts, **Routes A/B/C/D** classification, inline editing, and **W3C PROV-JSON Evidence Appendix** export. |
+| **Phase 2B** | **Korea Network Act (Art. 45-3) Committee & Subsidiary Pack** | **82** | Built `src/korea/governance.py`, `src/server/korea_routes.py`, and `KoreaCommitteePortal.tsx` on `/f/korea_network_act` with a **Subsidiary Entity Switcher**, **8-Topic Art. 45-3 Committee & RACI Tracker**, **Two-Way Policy Change Ledger**, and **"Entity Answers; Corp Supplies Evidence" Voice Validator**. |
+| **Phase 3** | **Cross-Regime Obligation Comparator & Statutory Clocks** | **74** | Built `CrossRegimeMatrix.tsx` on `/mapping?tab=cross-regime` comparing `DORA`, `UK_CTP`, `NIS2`, and `KOREA_NETWORK_ACT` across 5 core domains, and added the **Active Statutory Clocks & Conflicts** strip to `/workspace`. |
+
+</div>
+
+---
+
+## Part 4: Deep Dive into the Shipped v3.0 Capabilities
+
+### 1. The Regulatory Semantic Layer (Data Hub) and Corpus Contradiction Scanner (Phase 1)
+
+In our earlier UK CTP work, we discovered a subtle failure mode: the knowledge corpus simultaneously held a June 2026 research brief stating that *"no UK CTP has been designated yet"* and a July 2026 brief recording that HM Treasury made **SI 2026/777 on 10 July 2026 (in force 13 July 2026)**. Depending on how a question was phrased, vector retrieval could surface either chunk.
+
+In Bellwether v3.0, `src/data_hub/conflicts.py` and `DataHubExplorer.tsx` make the Regulatory Semantic Layer first-class live software:
+
+- **Live Trust Scoring with Root-Ancestor Deduplication:** Every canonical golden fact (`GF-01` through `GF-09`, plus the 18-case GShoe benchmark) is scored via `trust = freshness * (0.45 * authority + 0.30 * corroboration_eff + 0.25 * verification)`, where `corroboration_eff = 1 - 0.5^(n_eff - 1)` and `n_eff` collapses any sources sharing a `derived_from` root ancestor into a single independent observation.
+- **Direct Injection into the Staleness Judge:** When `assess_staleness()` runs in production (`src/rfi_reuse/staleness.py`), `_source_of_truth()` now prepends the regime's green and amber canonical golden facts directly above the retrieved ChromaDB excerpts.
+- **Cross-Regime Staleness Propagation:** When an analyst updates a canonical fact's value in the UI (`POST /api/data-hub/verify-fact`), Bellwether automatically calls `ResponseLibrary.flag_stale()` for that regime and rule reference, immediately marking dependent historical answers for re-verification.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/bellwether/bellwether-v3-data-hub-calibration-2026-10-19.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/bellwether/bellwether-v3-data-hub-calibration-2026-10-19.webp" alt="Bellwether v3.0 Data Hub and Trust Calibration view showing 9 canonical golden facts, 5 active corpus and cross-system contradictions, source lineage deduplication, and 100 percent accuracy on the 18-case GShoe trust benchmark." width="1440" height="900" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The Data Hub and Canonical Facts explorer on <code>/rfi-calibration</code> (also embedded in <code>/corpus</code>). It surfaces active <code>status_conflict</code>, <code>threshold_conflict</code>, and <code>scope_conflict</code> contradictions alongside live trust breakdowns and <code>derived_from</code> root-ancestor lineage. <a href="/images/bellwether/bellwether-v3-data-hub-calibration-2026-10-19.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+### 2. Multi-Question Engagement Workbench, 4-Route Triage, and the Korea Art. 45-3 Portal (Phase 2)
+
+When a global cloud or ICT provider operates through local subsidiaries in jurisdictions like South Korea, regulatory compliance is governed by three operational rules:
+
+- **Principle 1 ("The entity answers; Corp supplies evidence"):** A local Korean subsidiary cannot reply to MSIT or KISA by saying *"Global headquarters handles this."* The covered local entity owns the statutory duty and answers in its own voice, attaching global corporate engineering controls strictly as supporting evidence.
+- **Principle 2 ("One log per entity"):** A commercial sales and licensing subsidiary has a different statutory profile from a data center operating subsidiary (Information and Communications Service Provider, or ICSP). Their RFI logs, risk registers, and Local CISO filings must remain strictly separated.
+- **Principle 3 (Four-Route Triage + Route D Privilege Lock):** Incoming questions split into four distinct operational routes:
+
+<figure class="not-prose my-10 lg:-mx-24">
+<div class="overflow-x-auto" tabindex="0" role="region" aria-label="Bellwether 4-route regulatory RFI triage diagram">
+<a href="/images/projects/bellwether-four-route-triage-light.svg" class="block min-w-[960px]" target="_blank" rel="noopener">
+<picture>
+<source srcset="/images/projects/bellwether-four-route-triage-dark.svg" media="(prefers-color-scheme: dark)" />
+<img src="/images/projects/bellwether-four-route-triage-light.svg" alt="Flowchart of Bellwether's 4-route regulatory RFI triage. An incoming 20-50 question regulator pack is scoped to a legal entity, screened for active 24-hour or 4-hour incident triggers, and classified into Route A (Local Entity Direct), Route B (Local Answer + Corp Evidence), Route C (Corp Standard Position), or Route D (Legal and Privileged CELA, blocked from vector indexing)." width="960" height="680" loading="lazy" decoding="async" class="w-full h-auto" />
+</picture>
+</a>
+</div>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The 4-Route RFI Triage and Incident Path flow implemented in <code>src/rfi_reuse/engagement.py</code>. Route D items (statutory disputes, administrative fines, compulsory notices) are automatically privilege-locked so legal deliberations never enter the shared vector store. Open full size in <a href="/images/projects/bellwether-four-route-triage-light.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">light</a> or <a href="/images/projects/bellwether-four-route-triage-dark.svg" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">dark</a>.</figcaption>
+</figure>
+
+On `/f/korea_network_act`, the new **`KoreaCommitteePortal.tsx`** and **`RfiEngagementWorkbench.tsx`** bring all of these mechanics into one workspace:
+
+- **Subsidiary Entity Scope Switcher:** Toggles between the **Commercial & Licensing Subsidiary** and the **Data Center Operating Subsidiary (ICSP)**, verifying each entity's dedicated **Local CISO (`정보보호최고책임자`)**, Article 45-3(3) dual-role prohibition (zero concurrent non-security roles), MSIT filing status, and KISA ISMS-P/CSAP boundary.
+- **Article 45-3(4) Local Information Security Committee Tracker:** Tracks deliberation status (`approved`, `in_review`, `action_required`), RACI ownership, and evidence artifacts across all **8 mandatory statutory committee topics** (Staffing & Budget, Local Security Plan, ISMS/CSAP Audits, Local Risk Register, Korea-Specific Training, Regulatory RFIs/Surveys, 24h Intrusion Readiness, and Two-Way Policy Deltas).
+- **Entity Voice & Statutory Scope Validator:** Checks draft responses for three common failure modes: delegating statutory responsibility to global HQ, citing a dual-hatted or regional CISO title, or referencing a 72-hour breach clock without the mandatory **24-hour MSIT/KISA (KrCERT/CC) cyber intrusion clock** under Article 48-3.
+- **One-Click Submission Package + W3C PROV Appendix Export:** Exports the entire multi-question engagement pack as a structured Markdown submission with a machine-verifiable **W3C PROV-JSON Evidence Lineage Appendix**.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/bellwether/bellwether-v3-korea-committee-portal-2026-10-19.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/bellwether/bellwether-v3-korea-committee-portal-2026-10-19.webp" alt="Korea Network Act hub showing the Subsidiary Entity Switcher, Article 45-3 8-Topic Local Information Security Committee tracker, Two-Way Policy Change Ledger, Entity Voice Validator, and 4-Route Engagement Pack." width="1440" height="900" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The Korea Network Act (<code>/f/korea_network_act</code>) workbench. Above the fold sits the Article 45-3 Local CISO and 8-Topic Information Security Committee portal with subsidiary switching, bidirectional policy delta logging, and the Entity Voice validator; below it sits the Multi-Question 4-Route Engagement Pack. <a href="/images/bellwether/bellwether-v3-korea-committee-portal-2026-10-19.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+### 3. Cross-Regime Obligation and Incident Clock Comparator (Phase 3)
+
+Finally, compliance teams answering multi-regime inquiries constantly have to reconcile subtle statutory divergences across jurisdictions. We built **`CrossRegimeMatrix.tsx`** on `/mapping?tab=cross-regime` to compare **DORA**, **UK CTP**, **NIS2**, and the **Korea Network Act** side by side across five canonical domains (Incident Notification Clocks, Executive & CISO Governance, Fourth-Party Concentration, Resilience Testing & Certifications, and Supervisory Inspections):
+
+- **Strictest Common Denominator:** Synthesizes the global control target that satisfies all four regimes simultaneously (for example, an **Immediate / sub-4-hour initial incident trigger** paired with **24-hour KISA/NIS2 early warning** and **72-hour DORA/NIS2/PIPC intermediate updates**).
+- **Jurisdictional Divergence Traps:** Highlights where a global baseline fails locally, such as relying on ISO 27001/SOC 2 in place of Korea's mandatory KISA ISMS-P/CSAP certification (Article 47) or assigning a dual-hatted regional executive in violation of Korea Article 45-3.
+
+<figure class="not-prose my-10 lg:-mx-24" data-evidence="runtime-capture">
+<a href="/images/bellwether/bellwether-v3-cross-regime-matrix-2026-10-19.webp" class="block" target="_blank" rel="noopener">
+<img src="/images/bellwether/bellwether-v3-cross-regime-matrix-2026-10-19.webp" alt="Cross-Regime Obligation and Incident Clock Comparator on /mapping?tab=cross-regime showing side-by-side statutory requirements across DORA, UK CTP, NIS2, and the Korea Network Act." width="1440" height="900" loading="lazy" decoding="async" class="w-full h-auto" />
+</a>
+<figcaption class="mt-3 text-sm leading-relaxed text-cream-800 dark:text-cream-300">The 4-Regime Obligation and Incident Clock Comparator on <code>/mapping?tab=cross-regime</code>. Each domain surfaces the Strictest Common Denominator alongside jurisdictional divergence traps across DORA, UK CTP, NIS2, and the Korea Network Act. <a href="/images/bellwether/bellwether-v3-cross-regime-matrix-2026-10-19.webp" target="_blank" rel="noopener" class="text-rust-500 underline underline-offset-4">Open full size</a>.</figcaption>
+</figure>
+
+---
+
+## Verification and What Is Live Now
+
+Every phase of the Bellwether v3.0 build is backed by automated regression tests and deployed to Cloud Run via canary smoke-test promotion:
+
+- **Test Suite:** `556 passed, 0 failed` in `pytest` (including `tests/test_bellwether_v3_features.py` covering Korea Network Act narrative domains, anchor regulators, MSS obligations, 4-Route triage classification, Incident Path detection, Route D `422` privilege locking, and Data Hub fact verification) and `0` TypeScript errors in `tsc -b && vite build`.
+- **Calibrated Guardrails:** 69-case GShoe staleness regression suite (`97.2%` catch, `3.1%` false-fresh, `94.6%` precision) + 18-case Data Hub independence-discounted trust suite (`100%` accuracy, `0.0%` false-green rate).
+- **Live Production Runtime:** Serving on `bellwether.neural-bridge.dev` with **Gemini 4 Argon (`gemini-4-argon`)** on Vertex AI global, **Claude 5.5** on Anthropic direct, 19 regulator personas across 4 core regimes (+ dynamic EU AI Act and Cyber Resilience Act), and bespoke 3D Blender architectural emblems.
+
+The lesson from this overhaul mirrors what I learned rebuilding Moonbase earlier this week: a great core algorithm (like a cross-family staleness guardrail or an independence-discounted trust equation) only delivers its full value when the surrounding workflow closes the loop from intake to verified write-back.

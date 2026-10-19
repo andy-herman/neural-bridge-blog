@@ -1,0 +1,27 @@
+flowchart TB
+  accTitle: Bellwether 4-route regulatory RFI triage and subsidiary governance flow
+  accDescr: An incoming regulator questionnaire is scoped to a specific legal subsidiary, checked for active 24-hour or 4-hour incident reporting triggers, and routed into Route A (Local Direct), Route B (Local Answer with Corporate Evidence), Route C (Corporate Standard Position), or Route D (Privileged Legal Escalation blocked from vector indexing).
+  Pack["Incoming 20-50 Question Regulator Pack (DORA, UK CTP, NIS2, Korea Network Act)"]
+  Scope["Subsidiary Entity Scope: One Log per Legal Entity"]
+  IncidentGate{{"Active Cyber Intrusion or Statutory Clock?"}}
+  IncidentEsc["Immediate Incident Path: 4h DORA / 24h KISA & NIS2 / UK CTP"]
+  RouteClassifier{{"4-Route Triage Classifier"}}
+  RouteA["Route A: Local Entity Direct (Local CISO, Committee Minutes, Budget)"]
+  RouteB["Route B: Local Answer + Corp Evidence (Entity Voice, Global Telemetry)"]
+  RouteC["Route C: Corp Standard Position (AES-256, TLS 1.3, ISO/SOC 2)"]
+  RouteD["Route D: Legal & Privileged CELA (Blocked from Vector Indexing)"]
+  IndexAndExport["Inline Claim Repair -> Ring 1/2/3 Library Promotion + W3C PROV Package"]
+
+  Pack --> Scope
+  Scope --> IncidentGate
+  IncidentGate -->|"Yes"| IncidentEsc
+  IncidentGate -->|"Standard RFI"| RouteClassifier
+  IncidentEsc --> RouteClassifier
+  RouteClassifier --> RouteA
+  RouteClassifier --> RouteB
+  RouteClassifier --> RouteC
+  RouteClassifier --> RouteD
+  RouteA --> IndexAndExport
+  RouteB --> IndexAndExport
+  RouteC --> IndexAndExport
+  RouteD -->|"Metadata-only log"| IndexAndExport
