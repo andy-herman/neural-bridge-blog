@@ -2,6 +2,7 @@
 title: Project Husky
 description: "UW iSchool에서 AI 보안을 가르칠 때 쓰는 로컬 앱입니다. 슬라이드가 노트북 속 소형 모델을 상대로 실제 프롬프트 주입 공격을 실행하고, 각 방어가 얼마나 자주 버티는지 측정하며, 모든 데모 뒤에 녹화 영상을 준비해 둡니다."
 status: active
+siteUrl: "https://husky.neural-bridge.dev"
 started: 2026-09-18
 tagline: "공격이 실시간으로 벌어지는 강의실"
 featured: 6
@@ -44,7 +45,7 @@ Project Husky는 제가 워싱턴대학교(University of Washington) iSchool에�
 
 ## 학생 데이터
 
-수업 기록은 노트북에 남습니다. 세션마다 누가 참여했는지, 각 투표 답변, 각 질문과 추천이 일반 로그 파일에 기록됩니다. 학생이 휴대폰으로 참여하면 수업 중에는 릴레이가 학생의 이름과 NetID, 답변, 질문을 전달하고, 수업이 끝나면 클라우드 사본은 삭제됩니다. 종료하지 않은 수업의 사본은 다음 수업을 시작해 정리될 때까지 클라우드에 남습니다. 아직 배포하지 않은 릴레이 업데이트는 여기에 더해 수업 시작 12시간 뒤부터 쓰기를 막고, 남은 데이터를 Firestore가 대략 하루 안에 지우도록 합니다. 과제와 최종 성적은 Canvas에 그대로 둡니다.
+수업 기록은 로컬 호스트 기기에 남습니다. 세션마다 누가 참여했는지, 각 투표 답변, 각 질문과 추천이 일반 로그 파일에 기록됩니다. 학생이 휴대폰으로 참여하면 이름과 NetID는 Firestore에 도달하기 전에 브라우저에서 봉인(암호화)되므로, 수업 중 릴레이에는 암호화된 신원 정보와 투표 답변, 질문만 전달됩니다. Firestore 규칙은 수업 시작 12시간 뒤부터 새로운 쓰기를 차단하며, 수업을 종료하거나(또는 다음 수업을 시작하거나 `relay_cleanup.py`를 실행하면) 클라우드 사본이 삭제됩니다. 과제와 최종 성적은 Canvas에 그대로 둡니다.
 
 ## 사용 기술
 
@@ -55,9 +56,17 @@ Project Husky는 제가 워싱턴대학교(University of Washington) iSchool에�
 - 자체 Edge 창으로 열리는 Windows 앱을 만드는 PyInstaller.
 - Edge를 구동해 대체 영상을 녹화하는 Playwright.
 
+## 현재 접속 방식
+
+**[Launch Husky Lab](https://husky.neural-bridge.dev)** (강사 Google 로그인 필요).
+
+[teach.neural-bridge.dev로 강사 콘솔 열기](https://teach.neural-bridge.dev) (강사 Google 로그인 필요).
+
+Husky Lab은 상시 가동되는 Mac mini(`127.0.0.1:5310`, 로컬 Ollama의 `qwen2.5:3b` 연동)에서 24시간 실행되며, 아웃바운드 Cloudflare Tunnel(`https://husky.neural-bridge.dev`, 비공개 강사 콘솔로 동일하게 연결되는 `https://teach.neural-bridge.dev` 포함)과 강사 본인의 Google 계정만 허용하는 엄격한 Google 로그인 게이트 뒤에서 보호됩니다. 학생들은 Mac mini에 직접 접근하지 않고 휴대폰으로 QR 코드를 스캔해 Firebase 릴레이(`husky-1e3e47.web.app/j/<CODE>`)를 통해 실시간 수업에 참여합니다. 인증 없이 열어 볼 수 있는 공개 데모는 없습니다.
+
 ## Husky가 아닌 것
 
-Husky는 학습 관리 시스템(LMS)이 아니며 Canvas를 대체하지도 않습니다. 호스팅 서비스도 아닙니다. 제 노트북에서만 돌아가고, 소스 레포지토리는 비공개입니다.
+Husky는 학습 관리 시스템(LMS)이 아니며 Canvas를 대체하지도 않습니다. 공개 호스팅 서비스도 아닙니다. 제 노트북이나 상시 가동 중인 Mac mini에서만 돌아가고, 소스 레포지토리는 비공개입니다.
 
 데모는 30억 파라미터 모델에서 실행되므로, 데모의 공격 성공률을 프런티어 모델에 그대로 적용할 수는 없습니다. 옮겨 갈 수 있는 것은 방법입니다. 컨텍스트 전체를 보고, 한 번의 실행을 믿는 대신 측정하고, 문구보다 아키텍처를 바꾸는 쪽을 택하는 것이죠.
 
