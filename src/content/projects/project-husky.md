@@ -2,6 +2,7 @@
 title: Project Husky
 description: "The local app I teach AI security from at the UW iSchool. Its slides run real prompt injection attacks against a small model on the laptop, measure how often each defense holds, and keep a recorded clip behind every demo."
 status: active
+siteUrl: "https://husky.neural-bridge.dev"
 started: 2026-09-18
 tagline: "A classroom where the attack runs live"
 featured: 6
@@ -69,14 +70,14 @@ and off, and the room watches what the model does with each one.
 
 ## Student data
 
-Class records stay on the laptop. Each session writes a plain log of who
+Class records stay on the local host. Each session writes a plain log of who
 joined, each poll answer, and each question and vote. When students join from
-phones, the relay carries their names, NetIDs, answers, and questions during
-class, and the cloud copy is deleted when the class ends. A class that is
-never ended stays in the cloud until the next class starts and sweeps it. A
-relay update that is not deployed yet also stops writes 12 hours after a
-class starts and has Firestore delete what is left within about a day.
-Assignments and final grades stay in Canvas.
+phones, their names and NetIDs are sealed in the browser before reaching
+Firestore, so the relay carries only encrypted identity fields alongside poll
+answers and questions during class. Firestore rules stop new writes 12 hours
+after a class starts, and ending a class (or starting the next class or running
+`relay_cleanup.py`) deletes the cloud copy. Assignments and final grades stay
+in Canvas.
 
 ## What it is built from
 
@@ -87,11 +88,19 @@ Assignments and final grades stay in Canvas.
 - PyInstaller for the Windows app, which opens in its own Edge window.
 - Playwright driving Edge to record the fallback clips.
 
+## Current access
+
+**[Launch Husky Lab](https://husky.neural-bridge.dev)** (instructor Google sign-in required).
+
+[Open instructor console via teach.neural-bridge.dev](https://teach.neural-bridge.dev) (instructor Google sign-in required).
+
+Husky Lab runs 24/7 on the always-on Mac mini (`127.0.0.1:5310` with local `qwen2.5:3b` on Ollama) behind an outbound Cloudflare Tunnel (`https://husky.neural-bridge.dev`, with `https://teach.neural-bridge.dev` also routed to the private instructor console) and a strict Google Sign-In gate locked exclusively to the instructor's Google account. Students join live classes from their phones by scanning a QR code through the Firebase relay (`husky-1e3e47.web.app/j/<CODE>`) without touching the Mac mini. There is no public unauthenticated demo.
+
 ## What it is not
 
 Husky is not a learning management system, and it does not replace Canvas.
-It is not a hosted service either. It runs on my laptop, and its source
-repository is private.
+It is not a public hosted service either. It runs on my laptop or my always-on
+Mac mini, and its source repository is private.
 
 The demos run on a 3-billion-parameter model, so their attack rates are not
 rates against frontier models. What transfers is the method: look at the
